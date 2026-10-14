@@ -38,6 +38,17 @@ def test_normalize_respects_explicit_sslmode() -> None:
     assert "sslmode=verify-full" in out
 
 
+def test_normalize_strips_pgbouncer_query_flag() -> None:
+    raw = (
+        "postgresql://u:p@aws-1.pooler.supabase.com:6543/postgres"
+        "?pgbouncer=true&sslmode=require"
+    )
+    out = normalize_database_url(raw)
+    assert "pgbouncer" not in out.lower()
+    assert "sslmode=require" in out
+    assert out.startswith("postgresql+psycopg://")
+
+
 def test_database_url_property_uses_env_override() -> None:
     cfg = Settings(
         app_env="development",

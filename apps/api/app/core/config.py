@@ -52,6 +52,8 @@ _INSECURE_SECRET_VALUES = frozenset(
 
 def normalize_database_url(url: str, *, sslmode: str = "") -> str:
     """Normalize postgres URLs for SQLAlchemy + psycopg3 (Supabase/Neon friendly)."""
+    from urllib.parse import parse_qsl, urlencode, urlunparse
+
     u = url.strip()
     if not u:
         return u
@@ -59,15 +61,19 @@ def normalize_database_url(url: str, *, sslmode: str = "") -> str:
         u = "postgresql://" + u[len("postgres://") :]
     if u.startswith("postgresql://") and "+psycopg" not in u.split("://", 1)[0]:
         u = "postgresql+psycopg://" + u[len("postgresql://") :]
+
+    parsed = urlparse(u)
+    # Supabase / Prisma add libpq-incompatible flags (psycopg rejects them).
+    _drop = {"pgbouncer", "supabase", "statement_cache_size"}
+    query = [(k, v) for k, v in parse_qsl(parsed.query, keep_blank_values=True) if k.lower() not in _drop]
     mode = (sslmode or "").strip()
-    host = (urlparse(u).hostname or "").lower()
+    host = (parsed.hostname or "").lower()
     # Hosted Postgres (Supabase pooler/direct) requires TLS; local compose does not.
     if not mode and ("supabase.co" in host or "supabase.com" in host):
         mode = "require"
-    if mode and "sslmode=" not in u.lower():
-        sep = "&" if "?" in u else "?"
-        u = f"{u}{sep}sslmode={mode}"
-    return u
+    if mode and not any(k.lower() == "sslmode" for k, _ in query):
+        query.append(("sslmode", mode))
+    return urlunparse(parsed._replace(query=urlencode(query)))
 
 
 class Settings(BaseSettings):
