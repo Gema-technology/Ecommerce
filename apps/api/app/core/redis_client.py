@@ -4,12 +4,25 @@ from __future__ import annotations
 
 import logging
 from typing import Any
+from urllib.parse import urlparse, urlunparse
 
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
 _redis_client: Any | None = None
+
+
+def normalize_redis_url(url: str) -> str:
+    """Upstash requires TLS. Convert ``redis://…@*.upstash.io`` → ``rediss://``."""
+    u = url.strip()
+    if not u:
+        return u
+    parsed = urlparse(u)
+    host = (parsed.hostname or "").lower()
+    if host.endswith("upstash.io") and parsed.scheme == "redis":
+        return urlunparse(parsed._replace(scheme="rediss"))
+    return u
 
 
 def get_redis_client(*, ping: bool = True) -> Any:
@@ -22,24 +35,27 @@ def get_redis_client(*, ping: bool = True) -> Any:
     import redis
 
     if _redis_client is None:
-        url = (settings.redis_url or "").strip()
+        url = normalize_redis_url(settings.redis_url or "")
         if url:
+            # Upstash closes non-TLS connections immediately ("Connection closed by server").
             _redis_client = redis.Redis.from_url(
                 url,
                 decode_responses=True,
-                socket_connect_timeout=2.0,
-                socket_timeout=2.0,
+                socket_connect_timeout=5.0,
+                socket_timeout=5.0,
             )
         else:
             password = (settings.redis_password or "").strip() or None
+            host = (settings.redis_host or "").lower()
+            use_ssl = bool(settings.redis_ssl) or host.endswith("upstash.io")
             _redis_client = redis.Redis(
                 host=settings.redis_host,
                 port=settings.redis_port,
                 password=password,
-                ssl=bool(settings.redis_ssl),
+                ssl=use_ssl,
                 decode_responses=True,
-                socket_connect_timeout=2.0,
-                socket_timeout=2.0,
+                socket_connect_timeout=5.0,
+                socket_timeout=5.0,
             )
     if ping:
         _redis_client.ping()

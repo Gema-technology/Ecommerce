@@ -11,6 +11,7 @@ from pydantic import ValidationError
 
 from app.core import redis_client as redis_mod
 from app.core.config import Settings, normalize_database_url, _resolve_env_search_roots
+from app.core.redis_client import normalize_redis_url
 
 
 def test_env_search_roots_do_not_indexerror_on_shallow_paths() -> None:
@@ -96,6 +97,13 @@ def test_staging_rejects_insecure_database_url_password() -> None:
             public_app_url="https://gema.vercel.app",
             cors_origins="https://gema.vercel.app",
         )
+
+
+def test_normalize_redis_url_upgrades_upstash_to_tls() -> None:
+    raw = "redis://default:tok@safe-bull-188271.upstash.io:6379"
+    assert normalize_redis_url(raw).startswith("rediss://")
+    already = "rediss://default:tok@safe-bull-188271.upstash.io:6379"
+    assert normalize_redis_url(already) == already
 
 
 def test_redis_client_prefers_redis_url(monkeypatch: pytest.MonkeyPatch) -> None:
