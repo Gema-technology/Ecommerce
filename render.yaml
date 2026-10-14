@@ -1,0 +1,56 @@
+# Render Blueprint — GEMA API (free web service).
+# Dashboard: New → Blueprint → connect GitHub repo Gema-technology/Ecommerce
+# Docs: docs/ops/free-stack-deploy.md
+#
+# After first deploy: run migrations + seed from Render Shell:
+#   alembic upgrade head
+#   python -m app.scripts.seed
+
+services:
+  - type: web
+    name: gema-api
+    runtime: docker
+    plan: free
+    dockerfilePath: ./apps/api/Dockerfile
+    dockerContext: ./apps/api
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: APP_ENV
+        value: staging
+      - key: SESSION_BACKEND
+        value: redis
+      - key: AUTH_RATE_LIMIT_BACKEND
+        value: redis
+      - key: SESSION_COOKIE_SECURE
+        value: "true"
+      - key: OPENAPI_ENABLED
+        value: "false"
+      - key: ALLOW_MANUAL_PAYMENT_CONFIRM
+        value: "true"
+      - key: PAYMENT_DEFAULT_PROVIDER
+        value: manual
+      - key: COMMERCE_TAX_ENABLED
+        value: "true"
+      - key: COMMERCE_TAX_RATE
+        value: "0.15"
+      - key: SHIPPING_ENABLED
+        value: "true"
+      - key: EMAIL_ENABLED
+        value: "false"
+      # Secrets — set in Render dashboard (do not commit real values)
+      - key: DATABASE_URL
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: INTERNAL_JOB_SECRET
+        sync: false
+      - key: PAYMENT_WEBHOOK_SECRET
+        sync: false
+      - key: PUBLIC_APP_URL
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+      - key: SEED_ADMIN_EMAIL
+        sync: false
+      - key: SEED_ADMIN_PASSWORD
+        sync: false

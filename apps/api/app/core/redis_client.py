@@ -13,20 +13,34 @@ _redis_client: Any | None = None
 
 
 def get_redis_client(*, ping: bool = True) -> Any:
-    """Return a shared Redis client. Raises ConnectionError if unavailable."""
+    """Return a shared Redis client. Raises ConnectionError if unavailable.
+
+    Prefers REDIS_URL (Upstash ``rediss://…``). Otherwise uses host/port/password
+    with optional REDIS_SSL=true for TLS without a URL.
+    """
     global _redis_client
     import redis
 
     if _redis_client is None:
-        password = (settings.redis_password or "").strip() or None
-        _redis_client = redis.Redis(
-            host=settings.redis_host,
-            port=settings.redis_port,
-            password=password,
-            decode_responses=True,
-            socket_connect_timeout=2.0,
-            socket_timeout=2.0,
-        )
+        url = (settings.redis_url or "").strip()
+        if url:
+            _redis_client = redis.Redis.from_url(
+                url,
+                decode_responses=True,
+                socket_connect_timeout=2.0,
+                socket_timeout=2.0,
+            )
+        else:
+            password = (settings.redis_password or "").strip() or None
+            _redis_client = redis.Redis(
+                host=settings.redis_host,
+                port=settings.redis_port,
+                password=password,
+                ssl=bool(settings.redis_ssl),
+                decode_responses=True,
+                socket_connect_timeout=2.0,
+                socket_timeout=2.0,
+            )
     if ping:
         _redis_client.ping()
     return _redis_client

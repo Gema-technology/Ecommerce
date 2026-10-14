@@ -38,6 +38,8 @@ Fill before first `up`:
 
 Settings gates reject staging boot if Redis is `memory`, secrets are placeholders, or `PUBLIC_APP_URL` / `CORS_ORIGINS` contain localhost.
 
+For a **$0** public demo (Vercel + Supabase + Upstash + Render), see [free-stack-deploy.md](./free-stack-deploy.md) and `.env.free-demo.example`.
+
 ---
 
 ## 3. First-time deploy

@@ -28,6 +28,7 @@ htmlcov/
 !.env.example
 !.env.staging.example
 !.env.production.example
+!.env.free-demo.example
 .env.local
 .env.*.local
 

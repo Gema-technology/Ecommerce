@@ -1,0 +1,31 @@
+# Free-stack cron: expire inventory reservations via Render API.
+# Requires repo secrets: FREE_DEMO_API_ORIGIN, FREE_DEMO_INTERNAL_JOB_SECRET
+name: Expire reservations (free demo)
+
+on:
+  schedule:
+    # Every 15 minutes (GitHub cron minimum granularity is ~5–15m jitter)
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+jobs:
+  expire:
+    name: POST /internal/reservations/expire
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call expire job
+        env:
+          API_ORIGIN: ${{ secrets.FREE_DEMO_API_ORIGIN }}
+          INTERNAL_JOB_SECRET: ${{ secrets.FREE_DEMO_INTERNAL_JOB_SECRET }}
+        run: |
+          if [ -z "$API_ORIGIN" ] || [ -z "$INTERNAL_JOB_SECRET" ]; then
+            echo "Skip: FREE_DEMO_API_ORIGIN / FREE_DEMO_INTERNAL_JOB_SECRET not set"
+            exit 0
+          fi
+          code=$(curl -sS -o /tmp/expire.json -w "%{http_code}" -X POST \
+            -H "X-GEMA-Internal-Secret: ${INTERNAL_JOB_SECRET}" \
+            -H "Accept: application/json" \
+            "${API_ORIGIN%/}/api/v1/internal/reservations/expire")
+          echo "HTTP $code"
+          cat /tmp/expire.json || true
+          test "$code" = "200"

@@ -1,15 +1,40 @@
 from decimal import Decimal
 from pathlib import Path
 from typing import Self
+from urllib.parse import unquote, urlparse
 
-from pydantic import model_validator
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-_ROOT_DIR = Path(__file__).resolve().parents[4]
-_ENV_FILES = (
-    str(_ROOT_DIR / ".env"),
-    ".env",
-)
+
+def _resolve_env_search_roots() -> tuple[Path, ...]:
+    """Locate monorepo root for local `.env`; safe under Docker (`/app/app/core/...`).
+
+    Local layout: ``<repo>/apps/api/app/core/config.py`` → repo root.
+    Image layout: ``/app/app/core/config.py`` → only ``/app`` and cwd (env vars from host).
+    Never index ``parents[N]`` with a fixed N — shallow container paths raise IndexError.
+    """
+    here = Path(__file__).resolve()
+    roots: list[Path] = []
+    for parent in here.parents:
+        if (parent / "apps" / "api").is_dir() and (
+            (parent / "package.json").is_file() or (parent / ".env").is_file()
+        ):
+            roots.append(parent)
+            break
+    # API package root (Docker WORKDIR /app, or apps/api locally)
+    for parent in here.parents:
+        if (parent / "alembic.ini").is_file() and (parent / "app").is_dir():
+            if parent not in roots:
+                roots.append(parent)
+            break
+    cwd = Path.cwd()
+    if cwd not in roots:
+        roots.append(cwd)
+    return tuple(roots)
+
+
+_ENV_FILES = tuple(str(root / ".env") for root in _resolve_env_search_roots()) + (".env",)
 
 # Known insecure placeholders — rejected in production.
 _INSECURE_SECRET_VALUES = frozenset(
@@ -25,11 +50,32 @@ _INSECURE_SECRET_VALUES = frozenset(
 )
 
 
+def normalize_database_url(url: str, *, sslmode: str = "") -> str:
+    """Normalize postgres URLs for SQLAlchemy + psycopg3 (Supabase/Neon friendly)."""
+    u = url.strip()
+    if not u:
+        return u
+    if u.startswith("postgres://"):
+        u = "postgresql://" + u[len("postgres://") :]
+    if u.startswith("postgresql://") and "+psycopg" not in u.split("://", 1)[0]:
+        u = "postgresql+psycopg://" + u[len("postgresql://") :]
+    mode = (sslmode or "").strip()
+    host = (urlparse(u).hostname or "").lower()
+    # Hosted Postgres (Supabase pooler/direct) requires TLS; local compose does not.
+    if not mode and ("supabase.co" in host or "supabase.com" in host):
+        mode = "require"
+    if mode and "sslmode=" not in u.lower():
+        sep = "&" if "?" in u else "?"
+        u = f"{u}{sep}sslmode={mode}"
+    return u
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=_ENV_FILES,
         env_file_encoding="utf-8",
         extra="ignore",
+        populate_by_name=True,
     )
 
     app_env: str = "development"
@@ -40,11 +86,20 @@ class Settings(BaseSettings):
     postgres_password: str = "change_me"
     postgres_host: str = "localhost"
     postgres_port: int = 5432
+    # Optional full URL (Supabase/Neon). When set, overrides discrete POSTGRES_* fields.
+    # Env: DATABASE_URL
+    database_url_env: str = Field(default="", validation_alias="DATABASE_URL")
+    # Appended when set and missing from URL (e.g. require). Auto for *.supabase.co.
+    postgres_sslmode: str = ""
 
     redis_host: str = "localhost"
     redis_port: int = 6379
     # Optional AUTH for Redis (staging/prod). Empty = no password (local only).
     redis_password: str = ""
+    # Optional full URL (Upstash rediss://…). When set, overrides host/port/password.
+    redis_url: str = ""
+    # Use TLS with host/port mode (Upstash without REDIS_URL).
+    redis_ssl: bool = False
 
     cors_origins: str = "http://localhost:3000"
     session_cookie_name: str = "gema_session"
@@ -142,10 +197,22 @@ class Settings(BaseSettings):
 
     @property
     def database_url(self) -> str:
+        override = (self.database_url_env or "").strip()
+        if override:
+            return normalize_database_url(override, sslmode=self.postgres_sslmode)
         return (
             f"postgresql+psycopg://{self.postgres_user}:{self.postgres_password}"
             f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
         )
+
+    def _postgres_secret_insecure(self) -> bool:
+        """True when effective DB password looks like a local default."""
+        override = (self.database_url_env or "").strip()
+        if override:
+            parsed = urlparse(normalize_database_url(override, sslmode=self.postgres_sslmode))
+            password = unquote(parsed.password or "")
+            return password in _INSECURE_SECRET_VALUES
+        return self.postgres_password in _INSECURE_SECRET_VALUES
 
     @property
     def is_production(self) -> bool:
@@ -220,8 +287,11 @@ class Settings(BaseSettings):
     def _staging_safety_errors(self) -> list[str]:
         """Hard gates for APP_ENV=staging (sandbox PayPhone OK; no local defaults)."""
         errors: list[str] = []
-        if self.postgres_password in _INSECURE_SECRET_VALUES:
-            errors.append("POSTGRES_PASSWORD must not use a development default in staging")
+        if self._postgres_secret_insecure():
+            errors.append(
+                "Database password must not use a development default in staging "
+                "(POSTGRES_PASSWORD or DATABASE_URL)"
+            )
         if self.internal_job_secret in _INSECURE_SECRET_VALUES:
             errors.append("INTERNAL_JOB_SECRET must not use a development default in staging")
         if self.payment_webhook_secret in _INSECURE_SECRET_VALUES:
@@ -283,8 +353,11 @@ class Settings(BaseSettings):
                 raise ValueError("; ".join(errors))
             return self
 
-        if self.postgres_password in _INSECURE_SECRET_VALUES:
-            errors.append("POSTGRES_PASSWORD must not use a development default in production")
+        if self._postgres_secret_insecure():
+            errors.append(
+                "Database password must not use a development default in production "
+                "(POSTGRES_PASSWORD or DATABASE_URL)"
+            )
         if self.internal_job_secret in _INSECURE_SECRET_VALUES:
             errors.append("INTERNAL_JOB_SECRET must not use a development default in production")
         if self.payment_webhook_secret in _INSECURE_SECRET_VALUES:
