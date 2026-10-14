@@ -1,0 +1,186 @@
+# GEMA Technology — staging stack (no production cutover).
+#
+# Prerequisites (operator-supplied — do not invent values):
+#   1. Copy .env.staging.example → .env.staging and fill secrets + public HTTPS URLs.
+#   2. Terminate TLS at your reverse proxy / load balancer (Caddy, nginx, Traefik, cloud LB).
+#   3. Point the proxy at host-published web (and optionally api) bind addresses below.
+#
+# Usage (from repo root):
+#   docker compose -f docker-compose.staging.yml --env-file .env.staging pull
+#   docker compose -f docker-compose.staging.yml --env-file .env.staging build
+#   docker compose -f docker-compose.staging.yml --env-file .env.staging run --rm migrate
+#   docker compose -f docker-compose.staging.yml --env-file .env.staging up -d
+#
+# Postgres and Redis are NOT published to the host (Docker network only).
+
+name: gema-staging
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - staging_postgres_data:/var/lib/postgresql/data
+    networks:
+      - staging_internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    # No host ports — not exposed to the internet.
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    command:
+      [
+        "redis-server",
+        "--requirepass",
+        "${REDIS_PASSWORD}",
+        "--appendonly",
+        "yes",
+      ]
+    volumes:
+      - staging_redis_data:/data
+    networks:
+      - staging_internal
+    healthcheck:
+      test: ["CMD-SHELL", "REDISCLI_AUTH=$$REDIS_PASSWORD redis-cli ping | grep -q PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    # No host ports — not exposed to the internet.
+
+  mailpit:
+    # SMTP sandbox for transactional email validation (A1 hooks; not A4 outbox).
+    image: axllent/mailpit:v1.21
+    restart: unless-stopped
+    networks:
+      - staging_internal
+    ports:
+      # UI only on loopback of the host — operator tunnels or views locally.
+      - "127.0.0.1:${MAILPIT_UI_PORT:-8025}:8025"
+    # SMTP (1025) stays internal; API uses host `mailpit`.
+
+  migrate:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    profiles: ["migrate"]
+    # Default .env.staging; override for dry-runs:
+    #   GEMA_STAGING_ENV_FILE=.env.staging.example
+    env_file:
+      - ${GEMA_STAGING_ENV_FILE:-.env.staging}
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+    networks:
+      - staging_internal
+    depends_on:
+      postgres:
+        condition: service_healthy
+    entrypoint: ["alembic"]
+    command: ["upgrade", "head"]
+    restart: "no"
+
+  api:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file:
+      - ${GEMA_STAGING_ENV_FILE:-.env.staging}
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      SMTP_HOST: ${SMTP_HOST:-mailpit}
+      SMTP_PORT: ${SMTP_PORT:-1025}
+      SMTP_USE_TLS: ${SMTP_USE_TLS:-false}
+    volumes:
+      - staging_sri_data:/app/data/sri
+    networks:
+      - staging_internal
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      mailpit:
+        condition: service_started
+    ports:
+      # Bind loopback only — put HTTPS reverse proxy in front (operator-owned).
+      - "127.0.0.1:${API_HOST_PORT:-8000}:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8000/api/v1/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    restart: unless-stopped
+    environment:
+      # Server-side rewrite target (Docker DNS). Not a public secret.
+      API_ORIGIN: http://api:8000
+      PORT: "3000"
+      HOSTNAME: "0.0.0.0"
+    networks:
+      - staging_internal
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${WEB_HOST_PORT:-3000}:3000"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3000/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+
+  reservation-expire:
+    image: curlimages/curl:8.12.1
+    restart: unless-stopped
+    environment:
+      API_ORIGIN: http://api:8000
+      INTERNAL_JOB_SECRET: ${INTERNAL_JOB_SECRET}
+      RESERVATION_EXPIRE_INTERVAL_SECONDS: ${RESERVATION_EXPIRE_INTERVAL_SECONDS:-300}
+      RESERVATION_EXPIRE_ENABLED: ${RESERVATION_EXPIRE_ENABLED:-true}
+      RESERVATION_EXPIRE_TIMEOUT_SECONDS: ${RESERVATION_EXPIRE_TIMEOUT_SECONDS:-30}
+    volumes:
+      - ./infrastructure/jobs/expire-reservations-loop.sh:/job.sh:ro
+    entrypoint: ["/bin/sh", "/job.sh"]
+    networks:
+      - staging_internal
+    depends_on:
+      api:
+        condition: service_healthy
+
+networks:
+  staging_internal:
+    driver: bridge
+
+volumes:
+  staging_postgres_data:
+  staging_redis_data:
+  staging_sri_data:

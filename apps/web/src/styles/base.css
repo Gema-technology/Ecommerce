@@ -1,0 +1,140 @@
+/* Base document + typography utilities */
+
+html {
+  color-scheme: light dark;
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+}
+
+body {
+  background: var(--gema-bg);
+  color: var(--gema-text);
+  font-family: var(--font-sans);
+  min-height: 100%;
+  min-height: 100dvh;
+}
+
+/* Circuit grid — solo fondo general, enmascarado radial */
+.gema-bg-base {
+  position: relative;
+  isolation: isolate;
+}
+
+.gema-bg-base::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(to right, var(--gema-grid-line) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--gema-grid-line) 1px, transparent 1px);
+  background-size: var(--gema-grid-size) var(--gema-grid-size);
+  opacity: var(--gema-grid-opacity);
+  mask-image: radial-gradient(
+    ellipse 75% 65% at 50% 42%,
+    black 15%,
+    transparent 72%
+  );
+  -webkit-mask-image: radial-gradient(
+    ellipse 75% 65% at 50% 42%,
+    black 15%,
+    transparent 72%
+  );
+}
+
+.gema-bg-base > #gema-app-root {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  min-height: 100dvh;
+  flex-direction: column;
+  flex: 1;
+}
+
+/* Capas portal (buscador, drawers, modals) — hijos directos de body, sobre el chrome */
+.gema-portal-layer {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-overlay);
+  isolation: isolate;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--gema-primary) 22%, transparent);
+  color: var(--gema-text);
+}
+
+.font-display {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+}
+
+.font-mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.text-balance {
+  text-wrap: balance;
+}
+
+/* Ensure icon hits register on the button (iOS) */
+button svg,
+a svg {
+  pointer-events: none;
+}
+
+/* —— Scrollbars —— */
+
+@media (hover: hover) and (pointer: fine) {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(17, 24, 39, 0.18) transparent;
+  }
+
+  *::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background: rgba(17, 24, 39, 0.12);
+    border-radius: var(--radius-sm);
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background: rgba(17, 24, 39, 0.2);
+  }
+}
+
+/* —— Brand mark —— */
+
+.gema-logo {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  color: var(--gema-text);
+}
+
+.gema-logo span {
+  color: var(--gema-primary);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

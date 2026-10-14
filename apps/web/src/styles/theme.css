@@ -1,0 +1,188 @@
+/* GEMA Technology — Design tokens (PCB / Datasheet v3.0) */
+
+:root {
+  /* —— Surfaces —— */
+  --gema-bg: #f7f9fc;
+  --gema-bg-secondary: #eef2f7;
+  --gema-surface: #ffffff;
+  --gema-surface-elevated: #ffffff;
+  --gema-surface-interactive: #ffffff;
+  --gema-surface-secondary: #eef2f7;
+  --gema-surface-tertiary: #e2e8f0;
+  --gema-surface-highlight: #f7f9fc;
+  --gema-surface-hover: #f1f5f9;
+  --gema-surface-image: #f1f5f9;
+  --gema-footer: #111827;
+
+  /* —— Navy / title hierarchy —— */
+  --gema-navy: #111827;
+  --gema-navy-soft: #1f2937;
+  --gema-navy-muted: #374151;
+
+  /* —— Borders —— */
+  --gema-border: rgba(17, 24, 39, 0.08);
+  --gema-border-strong: #d0d7e2;
+  --gema-border-hover: rgba(37, 99, 235, 0.2);
+  --gema-border-input: #d0d7e2;
+  --gema-border-table: #e5eaf1;
+
+  /* —— Brand —— */
+  --gema-primary: #2563eb;
+  --gema-primary-hover: #1d4ed8;
+  --gema-primary-light: #eff6ff;
+  --gema-primary-fg: #ffffff;
+
+  /* Secondary accent (cyan) — not dominant */
+  --gema-cyan: #06b6d4;
+  --gema-cyan-hover: #0891b2;
+  --gema-cyan-dim: rgba(6, 182, 212, 0.1);
+  --gema-cyan-fg: #ffffff;
+
+  /* Compat: legacy "cyan" utilities map to primary blue */
+  --gema-brand: var(--gema-primary);
+  --gema-brand-hover: var(--gema-primary-hover);
+  --gema-brand-dim: var(--gema-primary-light);
+
+  /* AI accent — restrained */
+  --gema-violet: #4f46e5;
+  --gema-violet-dim: rgba(79, 70, 229, 0.08);
+
+  /* —— Semantic —— */
+  --gema-success: #047857;
+  --gema-success-bg: #ecfdf5;
+  --gema-warning: #b45309;
+  --gema-warning-bg: #fffbeb;
+  --gema-error: #dc2626;
+  --gema-error-bg: #fef2f2;
+  --gema-info: #2563eb;
+
+  /* —— Typography —— */
+  --gema-text: #111827;
+  --gema-text-secondary: #4b5563;
+  --gema-text-muted: #6b7280;
+  --gema-text-disabled: #9ca3af;
+  --gema-text-on-dark: #d1d5db;
+  --gema-text-on-dark-strong: #ffffff;
+
+  /* Compat aliases */
+  --background: var(--gema-bg);
+  --foreground: var(--gema-text);
+  --muted: var(--gema-text-muted);
+  --border: var(--gema-border);
+  --surface: var(--gema-surface);
+  --ring: var(--gema-primary);
+
+  /* —— Radius (PCB: recto; pill solo en filter chips) —— */
+  --radius-sm: 1px;
+  --radius-md: 2px;
+  --radius-lg: 2px;
+  --radius-xl: 2px;
+  --radius-2xl: 2px;
+  --radius-pill: 9999px;
+
+  /* —— Circuit grid (fondo global) —— */
+  --gema-grid-size: 48px;
+  --gema-grid-micro-size: 16px;
+  --gema-grid-line: rgba(17, 24, 39, 0.06);
+  --gema-grid-line-micro: rgba(17, 24, 39, 0.05);
+  --gema-grid-opacity: 0.3;
+
+  /* —— Shadows (soft / premium) —— */
+  --shadow-sm: 0 1px 2px rgba(17, 24, 39, 0.04);
+  --shadow-card: 0 2px 12px rgba(17, 24, 39, 0.04);
+  --shadow-md: 0 8px 28px rgba(17, 24, 39, 0.07);
+  --shadow-lg: 0 20px 48px rgba(17, 24, 39, 0.1);
+  --shadow-header: 0 1px 0 rgba(17, 24, 39, 0.04);
+
+  --glow-primary: 0 0 24px rgba(37, 99, 235, 0.1);
+  --glow-violet: 0 0 24px rgba(79, 70, 229, 0.08);
+  --shadow-glow: var(--glow-primary);
+  --shadow-glow-strong: var(--glow-primary);
+
+  /* —— Motion (Framer-like) —— */
+  --duration-fast: 140ms;
+  --duration-normal: 200ms;
+  --duration-medium: 280ms;
+  --duration-slow: 400ms;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* —— Layout —— */
+  --container-max: 1320px;
+  --header-height: 72px;
+  --section-y: 4rem;
+  --section-y-lg: 6rem;
+  --form-gap: 1.25rem;
+
+  /* —— Controls (buttons + inputs share the same scale) —— */
+  --control-height: 2.75rem; /* 44px */
+  --control-height-sm: 2.25rem; /* 36px */
+  --control-height-lg: 3.25rem; /* 52px */
+  --control-padding-x: 1rem;
+  --control-padding-x-sm: 0.85rem;
+  --control-padding-x-lg: 1.5rem;
+  --control-font-size: 0.875rem;
+  --control-font-size-sm: 0.8125rem;
+  --control-font-size-lg: 0.9375rem;
+  --control-radius: var(--radius-md);
+
+  /* —— Z-index —— */
+  --z-header: 50;
+  --z-dropdown: 60;
+  --z-overlay: 70;
+  --z-toast: 80;
+
+  /* —— Header / overlay —— */
+  --gema-header-bg: rgba(247, 249, 252, 0.86);
+  --gema-header-bg-blur: rgba(247, 249, 252, 0.72);
+  --gema-header-bg-scrolled: rgba(255, 255, 255, 0.92);
+  --gema-header-border: transparent;
+  --gema-header-border-scrolled: var(--gema-border);
+  --gema-overlay-backdrop: rgba(17, 24, 39, 0.4);
+  --gema-card-hover-border: var(--gema-primary);
+  --gema-primary-glow: rgba(37, 99, 235, 0.28);
+}
+
+@theme inline {
+  --color-background: var(--gema-bg);
+  --color-foreground: var(--gema-text);
+  --color-muted: var(--gema-text-muted);
+  --color-secondary: var(--gema-text-secondary);
+  --color-border: var(--gema-border);
+  --color-border-strong: var(--gema-border-strong);
+  --color-surface: var(--gema-surface);
+  --color-surface-elevated: var(--gema-surface-elevated);
+  --color-surface-interactive: var(--gema-surface-interactive);
+  --color-surface-secondary: var(--gema-surface-secondary);
+  --color-surface-tertiary: var(--gema-surface-tertiary);
+  --color-surface-highlight: var(--gema-surface-highlight);
+  --color-surface-hover: var(--gema-surface-hover);
+  --color-surface-image: var(--gema-surface-image);
+  --color-footer: var(--gema-footer);
+  --color-navy: var(--gema-navy);
+  --color-navy-soft: var(--gema-navy-soft);
+  --color-navy-muted: var(--gema-navy-muted);
+  --color-ring: var(--gema-primary);
+  --color-primary: var(--gema-primary);
+  --color-cyan: var(--gema-primary);
+  --color-accent: var(--gema-cyan);
+  --color-violet: var(--gema-violet);
+  --color-success: var(--gema-success);
+  --color-warning: var(--gema-warning);
+  --color-error: var(--gema-error);
+  --color-info: var(--gema-info);
+  --color-disabled: var(--gema-text-disabled);
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-space-grotesk), var(--font-inter), ui-sans-serif, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, monospace;
+
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-xl: var(--radius-xl);
+  --radius-2xl: var(--radius-2xl);
+
+  --shadow-sm: var(--shadow-sm);
+  --shadow-md: var(--shadow-md);
+  --shadow-lg: var(--shadow-lg);
+}

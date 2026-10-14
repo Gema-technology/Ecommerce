@@ -1,0 +1,108 @@
+# GEMA Technology — continuous integration (no production deploy).
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main, master]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  api:
+    name: API (ruff + pytest)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/api
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: gema_test
+          POSTGRES_USER: gema
+          POSTGRES_PASSWORD: gema_test_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U gema -d gema_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      APP_ENV: test
+      POSTGRES_DB: gema_test
+      POSTGRES_USER: gema
+      POSTGRES_PASSWORD: gema_test_password
+      POSTGRES_HOST: localhost
+      POSTGRES_PORT: "5432"
+      REDIS_HOST: localhost
+      REDIS_PORT: "6379"
+      SESSION_BACKEND: memory
+      PAYMENT_DEFAULT_PROVIDER: manual
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: apps/api/pyproject.toml
+
+      - name: Install API (editable + dev)
+        run: pip install -e ".[dev]"
+
+      - name: Ruff
+        run: ruff check app tests
+
+      - name: Pytest
+        run: pytest -q --tb=short
+
+  web:
+    name: Web (typecheck + lint + test + build)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install workspaces
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck --workspace=apps/web
+
+      - name: Lint
+        run: npm run lint --workspace=apps/web
+
+      - name: Unit tests
+        run: npm run test --workspace=apps/web
+
+      - name: Production build
+        run: npm run build --workspace=apps/web
+        env:
+          API_ORIGIN: http://127.0.0.1:8000

@@ -1,0 +1,67 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+*.egg-info/
+.eggs/
+dist/
+build/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Environment (never commit secrets — includes staging/production variants)
+.env
+.env.*
+!.env.example
+!.env.staging.example
+!.env.production.example
+.env.local
+.env.*.local
+
+# Next.js
+.next/
+out/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Docker
+*.pid
+
+# SRI certificates and generated PDFs (never commit)
+data/sri/
+**/data/sri/
+*.p12
+*.pfx
+
+# Testing
+coverage/
+
+# E2E artifacts (may contain credentials — never commit)
+.e2e-last-order.json
+.e2e-*.json
+*e2e-last-order*.json

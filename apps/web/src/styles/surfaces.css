@@ -1,0 +1,323 @@
+/* Cards, panels, badges, overlays, toast — PCB / datasheet */
+
+.gema-card {
+  background: var(--gema-surface);
+  border: 1px solid var(--gema-border);
+  border-radius: var(--radius-md);
+  box-shadow: none;
+  transition:
+    transform 150ms var(--ease-out),
+    border-color 150ms var(--ease-out);
+}
+
+.gema-card-interactive:hover {
+  transform: translateY(-3px);
+  border-color: var(--gema-card-hover-border);
+  box-shadow: none;
+}
+
+.gema-card-interactive:active {
+  transform: translateY(-1px);
+}
+
+.gema-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.65rem 0.85rem;
+  border-bottom: 1px solid var(--gema-border);
+}
+
+.gema-card-label {
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--gema-text-muted);
+}
+
+.gema-card-media {
+  position: relative;
+  background-color: var(--gema-surface-image);
+  background-image:
+    linear-gradient(to right, var(--gema-grid-line-micro) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--gema-grid-line-micro) 1px, transparent 1px);
+  background-size: var(--gema-grid-micro-size) var(--gema-grid-micro-size);
+}
+
+.gema-card-media-placeholder {
+  background-color: var(--gema-surface-image);
+  background-image:
+    linear-gradient(to right, var(--gema-grid-line-micro) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--gema-grid-line-micro) 1px, transparent 1px),
+    linear-gradient(145deg, var(--gema-surface-highlight), var(--gema-bg-secondary));
+  background-size:
+    var(--gema-grid-micro-size) var(--gema-grid-micro-size),
+    var(--gema-grid-micro-size) var(--gema-grid-micro-size),
+    100% 100%;
+}
+
+.gema-card-icon {
+  color: var(--gema-text-muted);
+  transition: color 150ms var(--ease-out);
+}
+
+.gema-card-interactive:hover .gema-card-icon {
+  color: var(--gema-primary);
+}
+
+.gema-card-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  padding: 0.85rem 1rem 0.75rem;
+}
+
+.gema-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-top: 1px solid var(--gema-border);
+}
+
+.gema-card-specs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.65rem;
+}
+
+.gema-spec-chip {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  letter-spacing: 0.02em;
+  padding: 0.15rem 0.45rem;
+  border: 1px solid var(--gema-border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--gema-text-muted);
+  background: var(--gema-surface-secondary);
+}
+
+.gema-status-dot {
+  flex-shrink: 0;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 6px currentColor;
+}
+
+.gema-status-dot--success {
+  color: var(--gema-success);
+}
+
+.gema-status-dot--warning {
+  color: var(--gema-warning);
+}
+
+.gema-status-dot--error {
+  color: var(--gema-error);
+}
+
+.gema-status-dot--primary {
+  color: var(--gema-primary);
+}
+
+.gema-status-dot--muted {
+  color: var(--gema-text-disabled);
+}
+
+.gema-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border-radius: var(--radius-sm);
+  padding: 0.2rem 0.5rem;
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border: 1px solid transparent;
+}
+
+.gema-badge-cyan,
+.gema-badge-primary {
+  background: var(--gema-primary-light);
+  color: var(--gema-primary-hover);
+  border-color: color-mix(in srgb, var(--gema-primary) 22%, transparent);
+}
+
+.gema-badge-violet {
+  background: var(--gema-violet-dim);
+  color: var(--gema-violet);
+  border-color: rgba(79, 70, 229, 0.15);
+}
+
+.gema-badge-success {
+  background: var(--gema-success-bg);
+  color: var(--gema-success);
+  border-color: rgba(4, 120, 87, 0.15);
+}
+
+.gema-badge-warning {
+  background: var(--gema-warning-bg);
+  color: var(--gema-warning);
+  border-color: rgba(180, 83, 9, 0.15);
+}
+
+.gema-badge-error {
+  background: var(--gema-error-bg);
+  color: var(--gema-error);
+  border-color: rgba(220, 38, 38, 0.15);
+}
+
+.gema-badge-muted {
+  background: var(--gema-surface-secondary);
+  color: var(--gema-text-secondary);
+  border-color: var(--gema-border-strong);
+}
+
+.gema-badge-on-dark {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--gema-text-on-dark);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+.gema-badge-accent {
+  background: var(--gema-cyan-dim);
+  color: var(--gema-cyan-hover);
+  border-color: rgba(6, 182, 212, 0.18);
+}
+
+.gema-panel {
+  background: var(--gema-surface);
+  border: 1px solid var(--gema-border);
+  border-radius: var(--radius-md);
+}
+
+.gema-panel-elevated {
+  background: var(--gema-surface);
+  border: 1px solid var(--gema-border);
+  border-radius: var(--radius-md);
+  box-shadow: none;
+}
+
+.gema-popover {
+  background: var(--gema-surface);
+  border: 1px solid var(--gema-border-table);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+}
+
+.gema-toast {
+  border-radius: var(--radius-md);
+  border: 1px solid var(--gema-border-table);
+  background: var(--gema-surface);
+  box-shadow: var(--shadow-md);
+  padding: 0.875rem 1rem;
+  color: var(--gema-text);
+  font-size: 0.875rem;
+}
+
+.gema-overlay-backdrop {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  background: var(--gema-overlay-backdrop);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.gema-overlay {
+  background: var(--gema-overlay-backdrop);
+}
+
+.gema-modal {
+  background: var(--gema-surface);
+  border: 1px solid var(--gema-border-table);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.gema-drawer {
+  background: var(--gema-surface);
+  border-color: var(--gema-border-table);
+  box-shadow: var(--shadow-lg);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.gema-price {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--gema-navy);
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+}
+
+.gema-price-compare {
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--gema-text-muted);
+  text-decoration: line-through;
+  font-variant-numeric: tabular-nums;
+}
+
+.gema-price-save {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  color: var(--gema-success);
+  letter-spacing: 0.02em;
+}
+
+/* Filter chips — única excepción con border-radius pill */
+.gema-filter-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  min-height: 32px;
+  padding: 0.3rem 0.85rem;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--gema-border-strong);
+  background: var(--gema-surface);
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: var(--gema-text-secondary);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    background 150ms var(--ease-out),
+    border-color 150ms var(--ease-out),
+    color 150ms var(--ease-out),
+    transform 150ms var(--ease-out);
+}
+
+.gema-filter-chip:hover {
+  border-color: var(--gema-border-hover);
+  color: var(--gema-text);
+}
+
+.gema-filter-chip.is-active {
+  background: var(--gema-primary);
+  border-color: var(--gema-primary);
+  color: var(--gema-primary-fg);
+}
+
+.gema-filter-chip:focus-visible {
+  outline: 2px solid var(--gema-primary);
+  outline-offset: 2px;
+}

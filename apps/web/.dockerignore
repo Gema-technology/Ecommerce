@@ -1,0 +1,11 @@
+node_modules
+.next
+coverage
+*.md
+!README.md
+.env
+.env.*
+.git
+**/*.test.ts
+**/*.test.tsx
+**/__tests__

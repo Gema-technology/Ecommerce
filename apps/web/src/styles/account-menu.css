@@ -1,0 +1,165 @@
+/* Account / user menu — matches admin nav language */
+
+.account-menu-panel {
+  width: 16.5rem;
+  padding: 0.4rem;
+  overflow: hidden;
+  background:
+    linear-gradient(
+      165deg,
+      color-mix(in srgb, var(--gema-primary) 5%, var(--gema-surface)) 0%,
+      var(--gema-surface) 48%,
+      color-mix(in srgb, var(--gema-cyan) 3%, var(--gema-surface)) 100%
+    );
+}
+
+.account-menu-header {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  margin: 0.15rem 0.15rem 0.45rem;
+  padding: 0.7rem 0.75rem;
+  border-radius: 0.55rem;
+  background: color-mix(in srgb, var(--gema-bg-secondary) 72%, transparent);
+  border: 1px solid var(--gema-border);
+}
+
+.account-menu-avatar {
+  display: grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  flex-shrink: 0;
+  border-radius: 0.55rem;
+  background: var(--gema-primary);
+  color: var(--gema-primary-fg);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.account-menu-avatar svg {
+  width: 1.1rem;
+  height: 1.1rem;
+  display: block;
+}
+
+.account-menu-meta {
+  min-width: 0;
+  flex: 1;
+}
+
+.account-menu-name {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--gema-navy);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-menu-email {
+  margin: 0.1rem 0 0;
+  font-size: 0.72rem;
+  color: var(--gema-navy-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-menu-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.1rem;
+}
+
+.account-menu-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  width: 100%;
+  padding: 0.55rem 0.6rem;
+  border: 0;
+  border-radius: 0.5rem;
+  background: transparent;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--gema-navy-muted);
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background 150ms ease,
+    color 150ms ease;
+}
+
+.account-menu-item:hover {
+  background: color-mix(in srgb, var(--gema-primary) 7%, transparent);
+  color: var(--gema-navy);
+}
+
+.account-menu-item--danger:hover {
+  background: color-mix(in srgb, var(--gema-error) 8%, transparent);
+  color: var(--gema-error);
+}
+
+.account-menu-item-icon {
+  display: grid;
+  place-items: center;
+  width: 1.85rem;
+  height: 1.85rem;
+  flex-shrink: 0;
+  border-radius: 0.45rem;
+  background: var(--gema-bg-secondary);
+  border: 1px solid var(--gema-border);
+  color: var(--gema-navy-soft);
+  transition:
+    background 150ms ease,
+    color 150ms ease,
+    border-color 150ms ease;
+}
+
+.account-menu-item-icon svg {
+  width: 0.95rem;
+  height: 0.95rem;
+  display: block;
+  stroke-width: 2.1;
+}
+
+.account-menu-item:hover .account-menu-item-icon {
+  background: color-mix(in srgb, var(--gema-primary) 14%, var(--gema-surface));
+  color: var(--gema-primary);
+  border-color: color-mix(in srgb, var(--gema-primary) 28%, transparent);
+}
+
+.account-menu-item--danger:hover .account-menu-item-icon {
+  background: color-mix(in srgb, var(--gema-error) 12%, var(--gema-surface));
+  color: var(--gema-error);
+  border-color: color-mix(in srgb, var(--gema-error) 28%, transparent);
+}
+
+.account-menu-divider {
+  height: 1px;
+  margin: 0.35rem 0.4rem;
+  background: var(--gema-border);
+  border: 0;
+}
+
+/* Mobile drawer account block */
+.account-menu-mobile {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.account-menu-mobile .account-menu-header {
+  margin: 0 0 0.35rem;
+}
+
+.account-menu-mobile .account-menu-item {
+  padding: 0.7rem 0.65rem;
+  font-size: 0.95rem;
+}

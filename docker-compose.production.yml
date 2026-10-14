@@ -1,0 +1,166 @@
+# GEMA Technology — production stack packaging (Sprint A5 prep).
+#
+# Prerequisites (operator-supplied — do not invent values):
+#   1. Copy .env.production.example → .env.production and fill live secrets + HTTPS URLs.
+#   2. Terminate TLS at your reverse proxy / load balancer.
+#   3. Point the proxy at host-published web bind address below.
+#   4. Run controlled migrations BEFORE replacing API containers.
+#
+# Usage (from repo root):
+#   docker compose -f docker-compose.production.yml --env-file .env.production build
+#   docker compose -f docker-compose.production.yml --env-file .env.production --profile migrate run --rm migrate
+#   docker compose -f docker-compose.production.yml --env-file .env.production up -d
+#
+# No Mailpit (email durable / SMTP prod deferred to A4). Postgres/Redis are NOT
+# published to the host. This file does NOT authorize live cutover by itself —
+# see docs/ops/production-runbook.md.
+
+name: gema-production
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - prod_postgres_data:/var/lib/postgresql/data
+    networks:
+      - prod_internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    command:
+      [
+        "redis-server",
+        "--requirepass",
+        "${REDIS_PASSWORD}",
+        "--appendonly",
+        "yes",
+      ]
+    volumes:
+      - prod_redis_data:/data
+    networks:
+      - prod_internal
+    healthcheck:
+      test: ["CMD-SHELL", "REDISCLI_AUTH=$$REDIS_PASSWORD redis-cli ping | grep -q PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  migrate:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    profiles: ["migrate"]
+    env_file:
+      - ${GEMA_PROD_ENV_FILE:-.env.production}
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+    networks:
+      - prod_internal
+    depends_on:
+      postgres:
+        condition: service_healthy
+    entrypoint: ["alembic"]
+    command: ["upgrade", "head"]
+    restart: "no"
+
+  api:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file:
+      - ${GEMA_PROD_ENV_FILE:-.env.production}
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+    volumes:
+      - prod_sri_data:/app/data/sri
+    networks:
+      - prod_internal
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${API_HOST_PORT:-8000}:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8000/api/v1/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    restart: unless-stopped
+    environment:
+      API_ORIGIN: http://api:8000
+      PORT: "3000"
+      HOSTNAME: "0.0.0.0"
+    networks:
+      - prod_internal
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${WEB_HOST_PORT:-3000}:3000"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3000/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+
+  reservation-expire:
+    image: curlimages/curl:8.12.1
+    restart: unless-stopped
+    environment:
+      API_ORIGIN: http://api:8000
+      INTERNAL_JOB_SECRET: ${INTERNAL_JOB_SECRET}
+      RESERVATION_EXPIRE_INTERVAL_SECONDS: ${RESERVATION_EXPIRE_INTERVAL_SECONDS:-300}
+      RESERVATION_EXPIRE_ENABLED: ${RESERVATION_EXPIRE_ENABLED:-true}
+      RESERVATION_EXPIRE_TIMEOUT_SECONDS: ${RESERVATION_EXPIRE_TIMEOUT_SECONDS:-30}
+    volumes:
+      - ./infrastructure/jobs/expire-reservations-loop.sh:/job.sh:ro
+    entrypoint: ["/bin/sh", "/job.sh"]
+    networks:
+      - prod_internal
+    depends_on:
+      api:
+        condition: service_healthy
+
+networks:
+  prod_internal:
+    driver: bridge
+
+volumes:
+  prod_postgres_data:
+  prod_redis_data:
+  prod_sri_data:

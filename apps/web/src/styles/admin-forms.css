@@ -1,0 +1,304 @@
+/* Admin form layout — drawer sections, NODO-style fields (scoped) */
+
+.admin-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.625rem;
+}
+
+.admin-form-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+}
+
+.admin-form-section-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gema-primary);
+}
+
+.admin-form-section-label::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--gema-border);
+}
+
+.admin-form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+@media (max-width: 480px) {
+  .admin-form-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.admin-form .label-required {
+  color: var(--gema-error);
+}
+
+/* Admin fields inherit the global control scale (forms.css). */
+.admin-form .input-field.mono-input,
+.admin-form .input-field[inputmode="numeric"],
+.admin-form .input-field[type="number"],
+.admin-form .price-input-field {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.admin-form .textarea-field.code-field {
+  font-family: var(--font-mono);
+  font-size: var(--control-font-size-sm);
+  min-height: 5.5rem;
+}
+
+.admin-form-hint {
+  font-family: var(--font-mono);
+  font-size: 0.65625rem;
+  color: var(--gema-text-muted);
+  line-height: 1.45;
+}
+
+/* Price input with currency prefix */
+.price-input-wrap {
+  position: relative;
+}
+
+.price-input-wrap .price-prefix {
+  position: absolute;
+  left: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  color: var(--gema-text-muted);
+  pointer-events: none;
+}
+
+.price-input-wrap .price-input-field {
+  padding-left: 2.25rem;
+}
+
+/* Status row with toggle */
+.admin-status-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 0.875rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--gema-border);
+  background: var(--gema-surface-secondary);
+}
+
+.admin-status-row .status-label {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--gema-text);
+}
+
+.admin-status-row .status-sub {
+  font-family: var(--font-mono);
+  font-size: 0.65625rem;
+  color: var(--gema-text-muted);
+  margin-top: 0.125rem;
+}
+
+/* Pill toggle switch */
+.gema-toggle {
+  position: relative;
+  display: inline-flex;
+  width: 2.25rem;
+  height: 1.25rem;
+  flex-shrink: 0;
+}
+
+.gema-toggle input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.gema-toggle-track {
+  position: absolute;
+  inset: 0;
+  cursor: pointer;
+  border-radius: 999px;
+  border: 1px solid var(--gema-border);
+  background: var(--gema-surface-tertiary, var(--gema-surface-secondary));
+  transition:
+    background var(--duration-normal) var(--ease-out),
+    border-color var(--duration-normal) var(--ease-out);
+}
+
+.gema-toggle-track::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 0.875rem;
+  height: 0.875rem;
+  border-radius: 50%;
+  background: var(--gema-text-muted);
+  transition:
+    transform var(--duration-normal) var(--ease-out),
+    background var(--duration-normal) var(--ease-out);
+}
+
+.gema-toggle input:checked + .gema-toggle-track {
+  background: var(--gema-primary-light);
+  border-color: var(--gema-primary);
+}
+
+.gema-toggle input:checked + .gema-toggle-track::after {
+  transform: translateX(1rem);
+  background: var(--gema-primary);
+}
+
+.gema-toggle input:focus-visible + .gema-toggle-track {
+  outline: 2px solid var(--gema-primary);
+  outline-offset: 2px;
+}
+
+/* Modal form chrome */
+.admin-form-modal-sub {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  color: var(--gema-text-muted);
+  margin-top: 0.125rem;
+}
+
+.admin-form-modal-foot {
+  display: flex;
+  gap: 0.625rem;
+  background: var(--gema-surface);
+}
+
+.admin-form-modal-foot .btn-primary,
+.admin-form-modal-foot .btn-ghost {
+  flex: 1;
+  justify-content: center;
+}
+
+.admin-form-modal-panel {
+  animation: gema-scale-in 0.22s var(--ease-out) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-form-modal-panel {
+    animation: none;
+  }
+}
+
+/* Upload placeholder */
+.admin-upload-box {
+  border: 1.5px dashed var(--gema-border);
+  border-radius: var(--radius-sm);
+  padding: 1.625rem 1rem;
+  text-align: center;
+  color: var(--gema-text-muted);
+  background: var(--gema-surface-secondary);
+  cursor: pointer;
+  transition:
+    border-color var(--duration-normal) var(--ease-out),
+    color var(--duration-normal) var(--ease-out),
+    background var(--duration-normal) var(--ease-out);
+}
+
+.admin-upload-box:hover {
+  border-color: var(--gema-primary);
+  color: var(--gema-primary);
+  background: var(--gema-primary-light);
+}
+
+.admin-upload-box .upload-main {
+  font-size: 0.78125rem;
+  color: var(--gema-text-secondary);
+}
+
+.admin-upload-box .upload-sub {
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  margin-top: 0.25rem;
+}
+
+/* Spec tags input area */
+.admin-spec-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  padding: 0.5rem;
+  min-height: 2.75rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--gema-border);
+  background: var(--gema-surface-secondary);
+}
+
+.admin-spec-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid var(--gema-border);
+  background: var(--gema-surface);
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  color: var(--gema-text);
+}
+
+.admin-spec-tag button {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--gema-text-muted);
+  cursor: pointer;
+  line-height: 1;
+}
+
+.admin-spec-tag button:hover {
+  color: var(--gema-error);
+}
+
+.admin-spec-input {
+  flex: 1;
+  min-width: 6rem;
+  background: none;
+  border: none;
+  outline: none;
+  font-family: var(--font-mono);
+  font-size: 0.71875rem;
+  color: var(--gema-text);
+  padding: 0.25rem;
+}
+
+.admin-spec-input::placeholder {
+  color: var(--gema-text-muted);
+}
+
+.admin-line-item {
+  padding: 0.75rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--gema-border);
+  background: var(--gema-surface-secondary);
+}
+
+.admin-line-item-title {
+  margin-bottom: 0.5rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--gema-text);
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}

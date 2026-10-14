@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <title>{{ title }} {{ doc.document_number }}</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 18mm 16mm 22mm 16mm;
+      @bottom-left {
+        content: "{{ business.name }}{% if business.phone %} · {{ business.phone }}{% endif %}";
+        font-size: 8pt;
+        color: #6b7280;
+        font-family: DejaVu Sans, Helvetica, Arial, sans-serif;
+      }
+      @bottom-right {
+        content: "Página " counter(page) " de " counter(pages);
+        font-size: 8pt;
+        color: #6b7280;
+        font-family: DejaVu Sans, Helvetica, Arial, sans-serif;
+      }
+    }
+    body {
+      font-family: DejaVu Sans, Helvetica, Arial, sans-serif;
+      font-size: 10.5pt;
+      color: #1a1f26;
+      line-height: 1.45;
+      margin: 0;
+    }
+    h1, h2, h3, p { margin: 0; }
+    .document-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+      border-bottom: 2px solid #3d8bff;
+      padding-bottom: 12px;
+      margin-bottom: 18px;
+    }
+    .brand {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      min-width: 0;
+      flex: 1;
+    }
+    .brand .logo {
+      width: 72px;
+      height: 72px;
+      object-fit: contain;
+      flex-shrink: 0;
+    }
+    .brand-text { min-width: 0; }
+    .brand h1 {
+      font-size: 18pt;
+      color: #0a0e13;
+      margin-bottom: 4px;
+    }
+    .brand p {
+      margin: 2px 0;
+      color: #4b5563;
+      font-size: 9.5pt;
+    }
+    .brand .regime {
+      margin-top: 6px;
+      font-size: 8.5pt;
+      color: #6b7280;
+    }
+    .doc-meta {
+      text-align: right;
+      min-width: 42%;
+    }
+    .doc-meta .doc-type {
+      font-size: 9pt;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #3d8bff;
+      font-weight: bold;
+      margin-bottom: 4px;
+    }
+    .doc-meta .number {
+      font-size: 14pt;
+      font-weight: bold;
+      color: #0a0e13;
+      margin-bottom: 6px;
+    }
+    .doc-meta p {
+      margin: 2px 0;
+      color: #4b5563;
+      font-size: 9pt;
+    }
+    .doc-meta .key {
+      word-break: break-all;
+      font-size: 8pt;
+      max-width: 260px;
+      margin-left: auto;
+    }
+    .section { margin-bottom: 16px; }
+    .section-title {
+      font-size: 9pt;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #6b7280;
+      margin-bottom: 6px;
+    }
+    .client-box {
+      background: #f3f6fa;
+      border: 1px solid #cfd8e6;
+      padding: 12px 14px;
+      border-radius: 4px;
+    }
+    .client-box .client-name {
+      font-size: 11.5pt;
+      font-weight: bold;
+      color: #0a0e13;
+      padding-bottom: 8px;
+      margin-bottom: 8px;
+      border-bottom: 1px solid #dbe3ee;
+    }
+    .client-grid {
+      display: table;
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .client-row { display: table-row; }
+    .client-field {
+      display: table-cell;
+      width: 50%;
+      vertical-align: top;
+      padding: 4px 12px 8px 0;
+    }
+    .client-field.full { width: 100%; }
+    .client-field .label {
+      display: block;
+      font-size: 7.5pt;
+      font-weight: bold;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #6b7280;
+      margin-bottom: 2px;
+    }
+    .client-field .value {
+      display: block;
+      font-size: 9.5pt;
+      color: #111827;
+    }
+    table.items {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 4px;
+    }
+    table.items th {
+      background: #0a0e13;
+      color: #fff;
+      text-align: left;
+      padding: 8px 10px;
+      font-size: 8.5pt;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    table.items th.num { text-align: right; }
+    table.items td {
+      border-bottom: 1px solid #e5e7eb;
+      padding: 8px 10px;
+      vertical-align: top;
+      font-size: 9.5pt;
+    }
+    table.items td.num { text-align: right; white-space: nowrap; }
+    table.items td.center { text-align: center; }
+    table.items .sku {
+      color: #6b7280;
+      font-size: 8.5pt;
+    }
+    .totals {
+      width: 260px;
+      margin-left: auto;
+      margin-top: 14px;
+    }
+    .totals table { width: 100%; border-collapse: collapse; }
+    .totals td { padding: 4px 0; font-size: 10pt; }
+    .totals td:last-child { text-align: right; font-weight: 600; }
+    .totals tr.grand td {
+      border-top: 2px solid #3d8bff;
+      padding-top: 8px;
+      font-size: 13pt;
+      color: #0a0e13;
+      font-weight: bold;
+    }
+    .document-footer {
+      margin-top: 28px;
+      padding-top: 12px;
+      border-top: 1px solid #e5e7eb;
+      font-size: 8.5pt;
+      color: #6b7280;
+      text-align: center;
+    }
+    .document-footer p { margin: 3px 0; }
+  </style>
+</head>
+<body>
+  <header class="document-header">
+    <div class="brand">
+      {% if logo_src %}
+      <img class="logo" src="{{ logo_src }}" alt="{{ business.name }}" />
+      {% endif %}
+      <div class="brand-text">
+        <h1>{{ business.name }}</h1>
+        {% if business.ruc %}<p>RUC: {{ business.ruc }}</p>{% endif %}
+        {% if business.address %}<p>{{ business.address }}</p>{% endif %}
+        {% if business.phone %}<p>Tel: {{ business.phone }}</p>{% endif %}
+        {% if business.email %}<p>{{ business.email }}</p>{% endif %}
+        {% if regime_label %}<p class="regime">{{ regime_label }}</p>{% endif %}
+      </div>
+    </div>
+    <div class="doc-meta">
+      <div class="doc-type">{{ title }}</div>
+      <div class="number">{{ doc.document_number }}</div>
+      <p>Fecha: {{ doc.created_at.strftime('%d/%m/%Y %H:%M') if doc.created_at else '' }}</p>
+      {% if doc.access_key %}
+      <p class="key">Clave de acceso: {{ doc.access_key }}</p>
+      {% endif %}
+      {% if doc.authorization_number %}
+      <p>Autorización SRI: {{ doc.authorization_number }}</p>
+      {% endif %}
+    </div>
+  </header>
+
+  <section class="section">
+    <div class="section-title">Cliente</div>
+    <div class="client-box">
+      <div class="client-name">{{ doc.buyer_name }}</div>
+      <div class="client-grid">
+        <div class="client-row">
+          <div class="client-field">
+            <span class="label">Identificación</span>
+            <span class="value">{{ buyer_id_label }} {{ doc.buyer_id_number }}</span>
+          </div>
+          {% if doc.buyer_email %}
+          <div class="client-field">
+            <span class="label">Correo</span>
+            <span class="value">{{ doc.buyer_email }}</span>
+          </div>
+          {% else %}
+          <div class="client-field"></div>
+          {% endif %}
+        </div>
+        {% if doc.buyer_address %}
+        <div class="client-row">
+          <div class="client-field full">
+            <span class="label">Dirección</span>
+            <span class="value">{{ doc.buyer_address }}</span>
+          </div>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-title">Detalle</div>
+    <table class="items">
+      <thead>
+        <tr>
+          <th class="num" style="width:48px;text-align:center;">Cant.</th>
+          <th>Descripción</th>
+          <th class="num" style="width:80px;">P. Unit.</th>
+          <th class="num" style="width:70px;">Desc.</th>
+          <th class="num" style="width:80px;">Total</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for item in items %}
+        <tr>
+          <td class="center">{{ item.quantity }}</td>
+          <td>
+            {{ item.description }}
+            {% if item.sku %}<span class="sku"> ({{ item.sku }})</span>{% endif %}
+          </td>
+          <td class="num">{{ item.unit_price | money }}</td>
+          <td class="num">{{ (item.discount or 0) | money }}</td>
+          <td class="num">{{ item.line_total | money }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+
+    <div class="totals">
+      <table>
+        <tr>
+          <td>Subtotal</td>
+          <td>{{ doc.subtotal | money }}</td>
+        </tr>
+        {% if doc.discount_total and doc.discount_total > 0 %}
+        <tr>
+          <td>Descuento</td>
+          <td>{{ doc.discount_total | money }}</td>
+        </tr>
+        {% endif %}
+        {% if doc.tax_total and doc.tax_total > 0 %}
+        <tr>
+          <td>IVA</td>
+          <td>{{ doc.tax_total | money }}</td>
+        </tr>
+        {% endif %}
+        {% if doc.shipping_total and doc.shipping_total > 0 %}
+        <tr>
+          <td>Envío</td>
+          <td>{{ doc.shipping_total | money }}</td>
+        </tr>
+        {% endif %}
+        <tr class="grand">
+          <td>Total</td>
+          <td>{{ doc.total | money }}</td>
+        </tr>
+      </table>
+    </div>
+  </section>
+
+  <footer class="document-footer">
+    <p>Documento generado por GEMA Technology.</p>
+    {% if doc.doc_type == 'NOTA_VENTA' %}
+    <p>Nota de venta — documento interno; no requiere autorización electrónica del SRI.</p>
+    {% else %}
+    <p>Representación impresa del documento electrónico (RIDE).</p>
+    {% endif %}
+  </footer>
+</body>
+</html>

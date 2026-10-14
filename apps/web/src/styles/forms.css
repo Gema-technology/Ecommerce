@@ -1,0 +1,226 @@
+/* Form primitives — use via FormField / Input / Select / Textarea / Checkbox */
+
+.form-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--form-gap);
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.label-field {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--gema-text-secondary);
+}
+
+.label-required {
+  color: var(--gema-error);
+}
+
+.field-hint {
+  font-size: 0.8125rem;
+  color: var(--gema-text-muted);
+  line-height: 1.4;
+}
+
+.field-error {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--gema-error);
+  line-height: 1.4;
+}
+
+.input-field,
+.select-field,
+.textarea-field {
+  width: 100%;
+  box-sizing: border-box;
+  border-radius: var(--control-radius);
+  border: 1px solid var(--gema-border-input);
+  background: var(--gema-surface);
+  color: var(--gema-text);
+  padding: 0.625rem var(--control-padding-x);
+  min-height: var(--control-height);
+  font-size: var(--control-font-size);
+  line-height: 1.4;
+  outline: none;
+  transition:
+    border-color var(--duration-normal) var(--ease-out),
+    box-shadow var(--duration-normal) var(--ease-out),
+    background var(--duration-normal) var(--ease-out);
+}
+
+.input-field:focus-visible,
+.select-field:focus-visible,
+.textarea-field:focus-visible {
+  outline: none;
+}
+
+.input-field::placeholder,
+.select-field::placeholder,
+.textarea-field::placeholder {
+  color: var(--gema-text-disabled);
+}
+
+.input-field:hover:not(:disabled):not(:focus),
+.select-field:hover:not(:disabled):not(:focus),
+.textarea-field:hover:not(:disabled):not(:focus) {
+  border-color: var(--gema-border-strong);
+}
+
+.input-field:focus,
+.select-field:focus,
+.textarea-field:focus {
+  border-color: var(--gema-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--gema-primary) 18%, transparent);
+}
+
+.input-field:disabled,
+.select-field:disabled,
+.textarea-field:disabled {
+  background: var(--gema-surface-secondary);
+  color: var(--gema-text-disabled);
+  cursor: not-allowed;
+  opacity: 0.85;
+}
+
+.input-field[aria-invalid="true"],
+.input-field.is-error,
+.select-field[aria-invalid="true"],
+.select-field.is-error,
+.textarea-field[aria-invalid="true"],
+.textarea-field.is-error {
+  border-color: var(--gema-error);
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
+}
+
+.textarea-field {
+  min-height: 6.5rem;
+  resize: vertical;
+  padding-block: 0.75rem;
+}
+
+.input-field[type="number"],
+.input-field[inputmode="numeric"] {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  /* Avoid native number min-content width blowing narrow filter grids. */
+  min-width: 0;
+}
+
+select.select-field {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 1rem;
+  padding-right: 2.5rem;
+}
+
+button.select-field {
+  cursor: pointer;
+  padding-right: 0.85rem;
+}
+
+button.select-field.is-open {
+  border-color: var(--gema-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--gema-primary) 18%, transparent);
+}
+
+/* Custom select menu (portal) — matches app surfaces / dark theme tokens */
+.gema-select-menu {
+  position: fixed;
+  z-index: 10;
+  overflow: hidden;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--gema-border);
+  background: var(--gema-surface-elevated);
+  box-shadow: var(--shadow-lg);
+  color: var(--gema-text);
+}
+
+.gema-select-menu-list {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0.25rem;
+  -webkit-overflow-scrolling: touch;
+}
+
+.gema-select-option {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: var(--radius-sm);
+  padding: 0.55rem 0.65rem;
+  text-align: left;
+  font-size: 0.875rem;
+  line-height: 1.35;
+  color: var(--gema-text-secondary);
+  transition:
+    background var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out);
+}
+
+.gema-select-option:hover,
+.gema-select-option.is-highlighted {
+  background: var(--gema-surface-hover);
+  color: var(--gema-text);
+}
+
+.gema-select-option.is-selected {
+  background: color-mix(in srgb, var(--gema-primary) 8%, transparent);
+  color: var(--gema-primary);
+  font-weight: 600;
+}
+
+.gema-select-option.is-selected.is-highlighted {
+  background: color-mix(in srgb, var(--gema-primary) 12%, transparent);
+}
+
+.gema-select-option.is-disabled,
+.gema-select-option:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.checkbox-field {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 0.625rem;
+  cursor: pointer;
+  font-size: 0.875rem;
+  color: var(--gema-text-secondary);
+  line-height: 1.4;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.checkbox-field input[type="checkbox"] {
+  flex-shrink: 0;
+  width: 1.125rem;
+  height: 1.125rem;
+  margin-top: 0.1rem;
+  accent-color: var(--gema-primary);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+}
+
+.checkbox-field:has(input:disabled) {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  padding-top: 0.25rem;
+}

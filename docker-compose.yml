@@ -1,0 +1,55 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: gema-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: gema-redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Periodic reservation expiry — calls the existing internal HTTP job.
+  # Enable with: docker compose --profile scheduler up -d
+  # Requires the API reachable at API_ORIGIN (host uvicorn → host.docker.internal).
+  reservation-expire:
+    image: curlimages/curl:8.12.1
+    container_name: gema-reservation-expire
+    restart: unless-stopped
+    profiles: ["scheduler"]
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      API_ORIGIN: ${API_ORIGIN:-http://host.docker.internal:8000}
+      INTERNAL_JOB_SECRET: ${INTERNAL_JOB_SECRET:-}
+      RESERVATION_EXPIRE_INTERVAL_SECONDS: ${RESERVATION_EXPIRE_INTERVAL_SECONDS:-300}
+      RESERVATION_EXPIRE_ENABLED: ${RESERVATION_EXPIRE_ENABLED:-true}
+    volumes:
+      - ./infrastructure/jobs/expire-reservations-loop.sh:/job.sh:ro
+    entrypoint: ["/bin/sh", "/job.sh"]
+
+volumes:
+  postgres_data:
+  redis_data:

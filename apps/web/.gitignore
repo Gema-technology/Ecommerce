@@ -1,0 +1,5 @@
+# Local Next.js artifacts (root .gitignore covers shared patterns)
+/.next/
+/out/
+/coverage/
+*.tsbuildinfo

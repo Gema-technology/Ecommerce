@@ -1,0 +1,437 @@
+/* Admin sidebar — PCB / datasheet atmosphere */
+
+.admin-aside {
+  --admin-aside-width: 15.5rem;
+  --admin-aside-collapsed-width: 4.75rem;
+  position: relative;
+  display: none;
+  width: var(--admin-aside-width);
+  flex-shrink: 0;
+  flex-direction: column;
+  height: 100vh;
+  position: sticky;
+  top: 0;
+  border-right: 1px solid var(--gema-border);
+  background:
+    linear-gradient(
+      165deg,
+      color-mix(in srgb, var(--gema-primary) 6%, var(--gema-surface)) 0%,
+      var(--gema-surface) 42%,
+      color-mix(in srgb, var(--gema-cyan) 4%, var(--gema-surface)) 100%
+    );
+  overflow: visible;
+}
+
+.admin-aside--ready {
+  transition: width 220ms ease;
+}
+
+.admin-aside--collapsed {
+  width: var(--admin-aside-collapsed-width);
+}
+
+.admin-aside::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.35;
+  background-image:
+    linear-gradient(var(--gema-border) 1px, transparent 1px),
+    linear-gradient(90deg, var(--gema-border) 1px, transparent 1px);
+  background-size: 28px 28px;
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.55), transparent 72%);
+}
+
+.admin-aside::after {
+  content: "";
+  position: absolute;
+  top: -20%;
+  right: -30%;
+  width: 14rem;
+  height: 14rem;
+  border-radius: 50%;
+  pointer-events: none;
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--gema-primary) 18%, transparent),
+    transparent 70%
+  );
+}
+
+@media (min-width: 1024px) {
+  .admin-aside {
+    display: flex;
+  }
+}
+
+.admin-aside-inner {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  padding: 1.15rem 0.75rem 0.85rem;
+  overflow: hidden;
+}
+
+.admin-aside--collapsed .admin-aside-inner {
+  padding-left: 0.55rem;
+  padding-right: 0.55rem;
+}
+
+.admin-aside-brand {
+  padding: 0.15rem 0.35rem 0.85rem;
+  border-bottom: 1px solid var(--gema-border);
+  margin-bottom: 0.85rem;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.admin-aside-brand-mark {
+  min-width: 0;
+}
+
+.admin-aside-brand-mono {
+  display: none;
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--gema-navy);
+  text-decoration: none;
+  line-height: 1;
+  padding: 0.35rem 0;
+}
+
+/* Edge handle on the divider line */
+.admin-aside-toggle {
+  position: absolute;
+  top: 3.35rem;
+  right: 0;
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  width: 1.35rem;
+  height: 2.35rem;
+  padding: 0;
+  transform: translateX(50%);
+  border: 1px solid var(--gema-border-strong);
+  border-radius: 999px;
+  background: var(--gema-surface);
+  color: var(--gema-navy-muted);
+  box-shadow:
+    0 1px 2px rgba(17, 24, 39, 0.06),
+    0 4px 12px rgba(17, 24, 39, 0.06);
+  cursor: pointer;
+  transition:
+    background 160ms ease,
+    color 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+
+.admin-aside-toggle-icon {
+  width: 0.9rem;
+  height: 0.9rem;
+  position: relative;
+  z-index: 1;
+  stroke-width: 2.25;
+}
+
+.admin-aside-toggle:hover {
+  background: var(--gema-primary);
+  color: var(--gema-primary-fg);
+  border-color: var(--gema-primary);
+  box-shadow:
+    0 2px 6px color-mix(in srgb, var(--gema-primary) 28%, transparent),
+    0 6px 16px rgba(17, 24, 39, 0.08);
+}
+
+.admin-aside-toggle:focus-visible {
+  outline: 2px solid var(--gema-primary);
+  outline-offset: 2px;
+}
+
+.admin-aside-toggle:active {
+  transform: translateX(50%) scale(0.96);
+}
+
+.admin-aside-brand-meta {
+  margin-top: 0.45rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gema-navy-muted);
+}
+
+.admin-aside-brand-dot {
+  width: 0.4rem;
+  height: 0.4rem;
+  border-radius: 999px;
+  background: var(--gema-cyan);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--gema-cyan) 22%, transparent);
+}
+
+.admin-nav {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.85rem;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 0 0.15rem 0.5rem;
+  scrollbar-width: thin;
+}
+
+.admin-nav-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.admin-nav-label {
+  padding: 0 0.65rem 0.35rem;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--gema-navy-muted) 75%, transparent);
+  white-space: nowrap;
+}
+
+.admin-nav-link {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.55rem 0.65rem;
+  border-radius: 0.55rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--gema-navy-muted);
+  text-decoration: none;
+  transition:
+    background 160ms ease,
+    color 160ms ease,
+    transform 160ms ease,
+    padding 160ms ease,
+    justify-content 160ms ease;
+}
+
+.admin-nav-text {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.admin-nav-link:hover {
+  background: color-mix(in srgb, var(--gema-primary) 6%, transparent);
+  color: var(--gema-navy);
+}
+
+.admin-nav-link:active {
+  transform: translateX(1px);
+}
+
+.admin-nav-link[aria-current="page"] {
+  background: color-mix(in srgb, var(--gema-primary) 10%, var(--gema-surface));
+  color: var(--gema-primary);
+  font-weight: 600;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--gema-primary) 18%, transparent);
+}
+
+.admin-nav-link[aria-current="page"]::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 20%;
+  bottom: 20%;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--gema-primary);
+}
+
+.admin-nav-icon {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  flex-shrink: 0;
+  border-radius: 0.5rem;
+  background: var(--gema-bg-secondary);
+  color: var(--gema-navy-soft);
+  border: 1px solid var(--gema-border);
+  transition: background 160ms ease, color 160ms ease, border-color 160ms ease;
+}
+
+.admin-nav-icon svg {
+  width: 1.05rem;
+  height: 1.05rem;
+  display: block;
+  stroke-width: 2.15;
+}
+
+.admin-nav-link:hover .admin-nav-icon {
+  background: color-mix(in srgb, var(--gema-primary) 14%, var(--gema-surface));
+  color: var(--gema-primary);
+  border-color: color-mix(in srgb, var(--gema-primary) 28%, transparent);
+}
+
+.admin-nav-link[aria-current="page"] .admin-nav-icon {
+  background: var(--gema-primary);
+  color: var(--gema-primary-fg);
+  border-color: var(--gema-primary);
+}
+
+.admin-aside-foot {
+  margin-top: auto;
+  padding: 0.85rem 0.35rem 0.15rem;
+  border-top: 1px solid var(--gema-border);
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.admin-aside-foot-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0 0.15rem;
+}
+
+.admin-aside-foot-hint {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--gema-navy-muted);
+  white-space: nowrap;
+}
+
+.admin-store-link {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.55rem 0.65rem;
+  border-radius: 0.55rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--gema-navy-soft);
+  text-decoration: none;
+  background: color-mix(in srgb, var(--gema-bg-secondary) 70%, transparent);
+  border: 1px solid var(--gema-border);
+  transition: background 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+
+.admin-store-link:hover {
+  background: var(--gema-surface);
+  border-color: color-mix(in srgb, var(--gema-primary) 28%, transparent);
+  color: var(--gema-primary);
+}
+
+.admin-store-link-icon {
+  display: grid;
+  place-items: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  flex-shrink: 0;
+  border-radius: 0.4rem;
+  background: var(--gema-surface);
+  color: var(--gema-primary);
+}
+
+/* —— Collapsed mode: icons only —— */
+.admin-aside--collapsed .admin-aside-brand-mark > a:not(.admin-aside-brand-mono),
+.admin-aside--collapsed .admin-aside-brand-mark > span {
+  display: none;
+}
+
+.admin-aside--collapsed .admin-aside-brand-mono {
+  display: inline-block;
+}
+
+.admin-aside--collapsed .admin-aside-brand-mark {
+  display: flex;
+  justify-content: center;
+}
+
+.admin-aside--collapsed .admin-aside-brand-meta-text,
+.admin-aside--collapsed .admin-nav-label,
+.admin-aside--collapsed .admin-nav-text,
+.admin-aside--collapsed .admin-aside-foot-hint,
+.admin-aside--collapsed .admin-store-link-text,
+.admin-aside--collapsed .admin-store-link-arrow {
+  display: none;
+}
+
+.admin-aside--collapsed .admin-aside-brand-meta {
+  justify-content: center;
+  width: 100%;
+  margin-top: 0.55rem;
+}
+
+.admin-aside--collapsed .admin-nav {
+  gap: 0.55rem;
+  padding-left: 0;
+  padding-right: 0;
+  align-items: center;
+}
+
+.admin-aside--collapsed .admin-nav-group {
+  width: 100%;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.admin-aside--collapsed .admin-nav-link {
+  justify-content: center;
+  width: 2.65rem;
+  height: 2.65rem;
+  padding: 0;
+  margin-inline: auto;
+  gap: 0;
+}
+
+.admin-aside--collapsed .admin-nav-link[aria-current="page"]::before {
+  left: 0;
+  top: 18%;
+  bottom: 18%;
+}
+
+.admin-aside--collapsed .admin-aside-foot-row {
+  justify-content: center;
+  padding: 0;
+}
+
+.admin-aside--collapsed .admin-store-link {
+  justify-content: center;
+  width: 2.65rem;
+  height: 2.65rem;
+  padding: 0;
+  margin-inline: auto;
+  gap: 0;
+}
+
+.admin-aside--collapsed .admin-store-link-icon {
+  width: 2rem;
+  height: 2rem;
+  background: transparent;
+}
+
+/* Mobile drawer nav reuses same link styles */
+.admin-nav-mobile {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  padding-bottom: 0.5rem;
+}
