@@ -28,7 +28,8 @@ cp .env.production.example .env.production
 
 docker compose -f docker-compose.production.yml --env-file .env.production build
 
-# Controlled migration (never from every API replica)
+# The API container also runs `alembic upgrade head` on start (advisory lock).
+# This job applies revisions before new replicas boot.
 docker compose -f docker-compose.production.yml --env-file .env.production \
   --profile migrate run --rm migrate
 
@@ -72,7 +73,7 @@ Expect `postgres=ok`, `redis=ok`. No secrets in response bodies.
 
 ## 4. Migrations
 
-Same rule as staging: one-shot migrate job before rolling API.
+The API image runs `alembic upgrade head` on start, behind a Postgres advisory lock. On Compose you can still apply revisions before replacing replicas:
 
 ```bash
 docker compose -f docker-compose.production.yml --env-file .env.production \

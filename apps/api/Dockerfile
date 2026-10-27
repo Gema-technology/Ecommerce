@@ -1,7 +1,7 @@
 # GEMA Technology API — production/staging image (no secrets baked in).
 # Build: docker build -f apps/api/Dockerfile -t gema-api apps/api
-# Run migrations separately (never from every replica):
-#   docker compose -f docker-compose.staging.yml run --rm migrate
+# Container start runs `alembic upgrade head` (advisory lock) before the server.
+# SKIP_MIGRATIONS=1 skips that step.
 
 FROM python:3.12-slim-bookworm AS builder
 

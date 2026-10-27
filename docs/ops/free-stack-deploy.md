@@ -64,12 +64,11 @@ Do **not** use the REST API URL/token for this app.
 
 4. Deploy → note public URL: `https://gema-api-xxxx.onrender.com`.
 
-### Migrate + seed (once)
+### Seed (once)
 
-Render **Shell** on the service:
+The API container runs `alembic upgrade head` before it starts serving. Seed the first admin from the Render **Shell**:
 
 ```bash
-alembic upgrade head
 python -m app.scripts.seed
 ```
 

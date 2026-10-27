@@ -2,8 +2,8 @@
 # Dashboard: New → Blueprint → connect GitHub repo Gema-technology/Ecommerce
 # Docs: docs/ops/free-stack-deploy.md
 #
-# After first deploy: run migrations + seed from Render Shell:
-#   alembic upgrade head
+# Migrations run on container start (`alembic upgrade head`).
+# After first deploy, seed once from Render Shell:
 #   python -m app.scripts.seed
 
 services:
