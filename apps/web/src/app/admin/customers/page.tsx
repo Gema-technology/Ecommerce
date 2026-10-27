@@ -9,10 +9,12 @@ import { AdminShell } from "@/components/admin/AdminShell";
 import { AdminTable } from "@/components/admin/AdminTable";
 import { useConfirmDialog } from "@/components/ui/confirm-dialog";
 import { FormField, Input, Select } from "@/components/ui/input";
+import { Modal } from "@/components/ui/modal";
 import { useToast } from "@/components/ui/toast";
 import { Pagination } from "@/components/shared/Pagination";
 import { ApiError } from "@/lib/auth-api";
 import { adminCustomersApi, type Customer } from "@/lib/admin-customers-api";
+import { citiesForProvince, ECUADOR_PROVINCES } from "@/lib/checkout-types";
 import { useAdminListParams } from "@/lib/use-admin-list-params";
 
 export default function AdminCustomersPage() {
@@ -31,6 +33,21 @@ export default function AdminCustomersPage() {
 
   const [draftQ, setDraftQ] = useState(list.q);
   const [draftActive, setDraftActive] = useState(active);
+  const [formOpen, setFormOpen] = useState(false);
+  const [editing, setEditing] = useState<Customer | null>(null);
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [taxIdType, setTaxIdType] = useState("");
+  const [taxId, setTaxId] = useState("");
+  const [addressLine, setAddressLine] = useState("");
+  const [addressReference, setAddressReference] = useState("");
+  const [province, setProvince] = useState("");
+  const [city, setCity] = useState("");
+  const [postalCode, setPostalCode] = useState("");
+  const [password, setPassword] = useState("");
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     setDraftQ(list.q);
@@ -77,6 +94,114 @@ export default function AdminCustomersPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  function openCreate() {
+    setEditing(null);
+    setFirstName("");
+    setLastName("");
+    setEmail("");
+    setPhone("");
+    setTaxIdType("");
+    setTaxId("");
+    setAddressLine("");
+    setAddressReference("");
+    setProvince("");
+    setCity("");
+    setPostalCode("");
+    setPassword("");
+    setFormOpen(true);
+  }
+
+  function openEdit(customer: Customer) {
+    setEditing(customer);
+    setFirstName(customer.first_name);
+    setLastName(customer.last_name);
+    setEmail(customer.email);
+    setPhone(customer.phone ?? "");
+    setTaxIdType(customer.tax_id_type ?? "");
+    setTaxId(customer.tax_id ?? "");
+    setAddressLine(customer.address_line ?? "");
+    setAddressReference(customer.address_reference ?? "");
+    setProvince(customer.province ?? "");
+    setCity(customer.city ?? "");
+    setPostalCode(customer.postal_code ?? "");
+    setPassword("");
+    setFormOpen(true);
+  }
+
+  async function saveCustomer(event: FormEvent) {
+    event.preventDefault();
+    setSaving(true);
+    setError(null);
+    try {
+      if (editing) {
+        const updated = await adminCustomersApi.update(editing.id, {
+          email: email.trim(),
+          first_name: firstName.trim(),
+          last_name: lastName.trim(),
+          phone: phone.trim(),
+          tax_id_type: taxIdType as Customer["tax_id_type"],
+          tax_id: taxId.trim(),
+          address_line: addressLine.trim(),
+          address_reference: addressReference.trim() || null,
+          city,
+          province,
+          country: "Ecuador",
+          postal_code: postalCode.trim() || null,
+          ...(password ? { password } : {}),
+        });
+        setItems((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
+        toast.success("Cliente actualizado.");
+      } else {
+        await adminCustomersApi.create({
+          email: email.trim(),
+          first_name: firstName.trim(),
+          last_name: lastName.trim(),
+          phone: phone.trim(),
+          tax_id_type: taxIdType as Customer["tax_id_type"],
+          tax_id: taxId.trim(),
+          address_line: addressLine.trim(),
+          address_reference: addressReference.trim() || null,
+          city,
+          province,
+          country: "Ecuador",
+          postal_code: postalCode.trim() || null,
+        });
+        toast.success("Cliente registrado.");
+        await load();
+      }
+      setFormOpen(false);
+    } catch (err) {
+      const msg = err instanceof ApiError ? err.message : "No se pudo guardar el cliente";
+      setError(msg);
+      toast.error(msg);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function removeCustomer(customer: Customer) {
+    const ok = await confirm({
+      title: "Eliminar cliente",
+      description: `¿Eliminar a ${customer.first_name} ${customer.last_name}? Si tiene pedidos, solo podrás desactivarlo.`,
+      confirmLabel: "Eliminar",
+      tone: "danger",
+    });
+    if (!ok) return;
+    setBusyId(customer.id);
+    setError(null);
+    try {
+      await adminCustomersApi.remove(customer.id);
+      toast.success("Cliente eliminado.");
+      await load();
+    } catch (err) {
+      const msg = err instanceof ApiError ? err.message : "No se pudo eliminar el cliente";
+      setError(msg);
+      toast.error(msg);
+    } finally {
+      setBusyId(null);
+    }
+  }
 
   function onFilter(event: FormEvent) {
     event.preventDefault();
@@ -147,11 +272,16 @@ export default function AdminCustomersPage() {
   return (
     <AdminShell title="Clientes">
       {confirmDialog}
-      <p className="mb-4 max-w-2xl text-sm text-secondary">
-        Compradores de la tienda. Activa{" "}
-        <strong className="font-medium text-foreground">Contra entrega</strong>{" "}
-        solo para clientes de confianza. El equipo se gestiona en Equipo.
-      </p>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <p className="max-w-2xl text-sm text-secondary">
+          Datos para facturar: identificación, teléfono y dirección. La
+          contraseña solo hace falta si la persona va a entrar a la tienda web.
+          El equipo se gestiona en Equipo.
+        </p>
+        <button type="button" className="btn-primary" onClick={openCreate}>
+          Nuevo cliente
+        </button>
+      </div>
 
       <AdminFilterBar
         onSubmit={onFilter}
@@ -195,7 +325,7 @@ export default function AdminCustomersPage() {
       ) : null}
 
       <AdminTable
-        columns={4}
+        columns={6}
         loading={loading}
         error={
           error && !(error.includes("sesión") || error.includes("ADMIN"))
@@ -209,8 +339,10 @@ export default function AdminCustomersPage() {
           <tr>
             <th>Nombre</th>
             <th>Correo</th>
+            <th>Teléfono</th>
+            <th>Identificación</th>
             <th>Estado</th>
-            <th>Contra entrega</th>
+            <th>Acciones</th>
           </tr>
         }
         footer={
@@ -228,6 +360,8 @@ export default function AdminCustomersPage() {
               {u.first_name} {u.last_name}
             </td>
             <td className="font-mono text-xs">{u.email}</td>
+            <td>{u.phone || "—"}</td>
+            <td>{u.tax_id ? `${u.tax_id_type === "RUC" ? "RUC" : u.tax_id_type === "PASAPORTE" ? "Pasaporte" : "Cédula"} ${u.tax_id}` : "—"}</td>
             <td>
               <button
                 type="button"
@@ -239,24 +373,173 @@ export default function AdminCustomersPage() {
               </button>
             </td>
             <td>
-              <button
-                type="button"
-                className={
-                  u.allow_cash_on_delivery ? "btn-primary" : "btn-ghost"
-                }
-                disabled={busyId === u.id}
-                onClick={() => void toggleCod(u)}
-              >
-                {busyId === u.id
-                  ? "…"
-                  : u.allow_cash_on_delivery
-                    ? "Habilitado"
-                    : "Deshabilitado"}
-              </button>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  className="btn-ghost btn-sm"
+                  onClick={() => openEdit(u)}
+                >
+                  Editar
+                </button>
+                <button
+                  type="button"
+                  className={u.allow_cash_on_delivery ? "btn-primary btn-sm" : "btn-ghost btn-sm"}
+                  disabled={busyId === u.id}
+                  onClick={() => void toggleCod(u)}
+                >
+                  {u.allow_cash_on_delivery ? "Contra entrega" : "Sin contra entrega"}
+                </button>
+                <button
+                  type="button"
+                  className="btn-ghost btn-sm"
+                  disabled={busyId === u.id}
+                  onClick={() => void removeCustomer(u)}
+                >
+                  Eliminar
+                </button>
+              </div>
             </td>
           </tr>
         ))}
       </AdminTable>
+
+      <Modal
+        open={formOpen}
+        title={editing ? "Editar cliente" : "Nuevo cliente"}
+        onClose={() => setFormOpen(false)}
+      >
+        <form onSubmit={(event) => void saveCustomer(event)} className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <FormField label="Nombre" required>
+              <Input
+                value={firstName}
+                onChange={(event) => setFirstName(event.target.value)}
+                required
+              />
+            </FormField>
+            <FormField label="Apellido" required>
+              <Input
+                value={lastName}
+                onChange={(event) => setLastName(event.target.value)}
+                required
+              />
+            </FormField>
+            <FormField label="Correo" required>
+              <Input
+                type="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                required
+              />
+            </FormField>
+            <FormField label="Teléfono" required>
+              <Input
+                value={phone}
+                onChange={(event) => setPhone(event.target.value)}
+                required
+              />
+            </FormField>
+            <FormField label="Identificación" required>
+              <Select
+                value={taxIdType}
+                onChange={(event) => setTaxIdType(event.target.value)}
+                required
+              >
+                <option value="">Seleccionar…</option>
+                <option value="CEDULA">Cédula</option>
+                <option value="RUC">RUC</option>
+                <option value="PASAPORTE">Pasaporte</option>
+              </Select>
+            </FormField>
+            <FormField label="Número" required>
+              <Input
+                value={taxId}
+                onChange={(event) => setTaxId(event.target.value)}
+                inputMode={taxIdType === "PASAPORTE" ? "text" : "numeric"}
+                required
+              />
+            </FormField>
+            <FormField label="Provincia" required>
+              <Select
+                value={province}
+                required
+                onChange={(event) => {
+                  setProvince(event.target.value);
+                  setCity("");
+                }}
+              >
+                <option value="">Seleccionar…</option>
+                {ECUADOR_PROVINCES.map((item) => (
+                  <option key={item} value={item}>
+                    {item}
+                  </option>
+                ))}
+              </Select>
+            </FormField>
+            <FormField label="Ciudad" required>
+              <Select
+                value={city}
+                required
+                disabled={!province}
+                onChange={(event) => setCity(event.target.value)}
+              >
+                <option value="">
+                  {province ? "Seleccionar…" : "Elige provincia primero"}
+                </option>
+                {citiesForProvince(province).map((item) => (
+                  <option key={item} value={item}>
+                    {item}
+                  </option>
+                ))}
+              </Select>
+            </FormField>
+            <FormField label="Dirección" required className="sm:col-span-2">
+              <Input
+                value={addressLine}
+                onChange={(event) => setAddressLine(event.target.value)}
+                required
+              />
+            </FormField>
+            <FormField label="Referencia">
+              <Input
+                value={addressReference}
+                onChange={(event) => setAddressReference(event.target.value)}
+                placeholder="Opcional"
+              />
+            </FormField>
+            <FormField label="Código postal">
+              <Input
+                value={postalCode}
+                onChange={(event) => setPostalCode(event.target.value)}
+                placeholder="Opcional"
+              />
+            </FormField>
+            {editing ? (
+              <FormField
+                label="Nueva contraseña"
+                hint="Opcional. Déjala vacía para no cambiar el acceso."
+                className="sm:col-span-2"
+              >
+                <Input
+                  type="password"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  minLength={8}
+                  autoComplete="new-password"
+                />
+              </FormField>
+            ) : null}
+          </div>
+          <div className="flex justify-end gap-2">
+            <button type="button" className="btn-ghost" onClick={() => setFormOpen(false)}>
+              Cancelar
+            </button>
+            <button type="submit" className="btn-primary" disabled={saving}>
+              {saving ? "Guardando…" : "Guardar"}
+            </button>
+          </div>
+        </form>
+      </Modal>
     </AdminShell>
   );
 }

@@ -51,10 +51,32 @@ export type OrderStatusEvent = {
   created_at: string;
 };
 
+export type CounterSaleItem = {
+  product_id: string;
+  quantity: number;
+};
+
+export type CounterSaleRequest = {
+  customer_id?: string | null;
+  customer_name?: string | null;
+  customer_phone?: string | null;
+  customer_notes?: string | null;
+  buyer_id_type?: "CEDULA" | "RUC" | "PASAPORTE" | null;
+  buyer_id_number?: string | null;
+  address_line?: string | null;
+  address_reference?: string | null;
+  city?: string | null;
+  province?: string | null;
+  country?: string | null;
+  postal_code?: string | null;
+  items: CounterSaleItem[];
+};
+
 export type Order = {
   id: string;
   order_number: string;
   status: string;
+  channel?: string;
   currency: string;
   subtotal: string;
   tax_total: string;
@@ -284,6 +306,12 @@ export const ordersApi = {
   },
   adminGet(orderId: string) {
     return request<Order>(`/api/v1/admin/orders/${orderId}`);
+  },
+  createCounterSale(payload: CounterSaleRequest) {
+    return request<Order>("/api/v1/admin/orders/counter-sale", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
   },
   adminUpdateStatus(
     orderId: string,

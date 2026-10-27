@@ -9,8 +9,10 @@ from app.modules.auth.dependencies import CurrentUser, RequireAdmin
 from app.modules.users.schemas import (
     AdminUserCodUpdate,
     CustomerActiveUpdate,
+    CustomerCreate,
     CustomerListItem,
     CustomerListResponse,
+    CustomerUpdate,
     UserProfileUpdate,
     UserPublic,
 )
@@ -48,6 +50,43 @@ def list_customers_admin(
         q=q,
         is_active=is_active,
     )
+
+
+@router.post("/admin/customers", response_model=CustomerListItem, status_code=201)
+def create_customer_admin(
+    payload: CustomerCreate,
+    _admin: RequireAdmin,
+    db: Annotated[Session, Depends(get_db)],
+) -> CustomerListItem:
+    return UserService(db).create_customer(payload)
+
+
+@router.get("/admin/customers/{user_id}", response_model=CustomerListItem)
+def get_customer_admin(
+    user_id: UUID,
+    _admin: RequireAdmin,
+    db: Annotated[Session, Depends(get_db)],
+) -> CustomerListItem:
+    return UserService(db).get_customer(user_id)
+
+
+@router.patch("/admin/customers/{user_id}", response_model=CustomerListItem)
+def update_customer_admin(
+    user_id: UUID,
+    payload: CustomerUpdate,
+    _admin: RequireAdmin,
+    db: Annotated[Session, Depends(get_db)],
+) -> CustomerListItem:
+    return UserService(db).update_customer(user_id, payload)
+
+
+@router.delete("/admin/customers/{user_id}", status_code=204)
+def delete_customer_admin(
+    user_id: UUID,
+    _admin: RequireAdmin,
+    db: Annotated[Session, Depends(get_db)],
+) -> None:
+    UserService(db).delete_customer(user_id)
 
 
 @router.patch("/admin/customers/{user_id}/cash-on-delivery", response_model=CustomerListItem)

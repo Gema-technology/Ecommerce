@@ -41,11 +41,14 @@ class Order(Base):
     __tablename__ = "orders"
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id: Mapped[uuid.UUID] = mapped_column(
+    user_id: Mapped[uuid.UUID | None] = mapped_column(
         Uuid(as_uuid=True),
         ForeignKey("users.id", ondelete="RESTRICT"),
-        nullable=False,
+        nullable=True,
         index=True,
+    )
+    channel: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="WEB", server_default="WEB"
     )
     order_number: Mapped[str] = mapped_column(String(40), unique=True, nullable=False, index=True)
     status: Mapped[str] = mapped_column(
@@ -84,7 +87,7 @@ class Order(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )
 
-    user: Mapped["User"] = relationship("User")
+    user: Mapped["User | None"] = relationship("User")
     items: Mapped[list["OrderItem"]] = relationship(
         "OrderItem",
         back_populates="order",

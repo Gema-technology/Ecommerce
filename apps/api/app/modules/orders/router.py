@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.modules.auth.dependencies import CurrentUser, RequireAdmin
 from app.modules.orders.schemas import (
+    CounterSaleRequest,
     OrderListResponse,
     OrderRead,
     OrderStatusUpdateRequest,
@@ -55,6 +56,15 @@ def get_my_order(
     service: Annotated[OrderService, Depends(get_order_service)],
 ) -> OrderRead:
     return service.get_for_user(user, order_id)
+
+
+@router.post("/admin/orders/counter-sale", response_model=OrderRead, status_code=201)
+def admin_counter_sale(
+    payload: CounterSaleRequest,
+    admin: RequireAdmin,
+    service: Annotated[OrderService, Depends(get_order_service)],
+) -> OrderRead:
+    return service.create_counter_sale(admin, payload)
 
 
 @router.get("/admin/orders", response_model=OrderListResponse)

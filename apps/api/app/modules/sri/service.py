@@ -310,6 +310,12 @@ class SriService:
         buyer = self._resolve_buyer(order, payload)
         id_type, id_number, name, email, address = buyer
 
+        if payload.doc_type == FiscalDocType.FACTURA.value and not address:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="La factura requiere la dirección del comprador",
+            )
+
         if (
             id_type == BuyerIdType.CONSUMIDOR_FINAL.value
             and payload.doc_type == FiscalDocType.FACTURA.value

@@ -426,7 +426,12 @@ class InventoryService:
         )
 
     def sale(
-        self, product_id: UUID, data: MovementRequest, user: User
+        self,
+        product_id: UUID,
+        data: MovementRequest,
+        user: User,
+        *,
+        commit: bool = True,
     ) -> InventoryOperationResponse:
         return self._apply_movement(
             product_id=product_id,
@@ -438,6 +443,7 @@ class InventoryService:
             reference_type=data.reference_type,
             reference_id=data.reference_id,
             notes=data.notes,
+            commit=commit,
         )
 
     def reserve(

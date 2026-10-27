@@ -4,7 +4,9 @@ from decimal import Decimal
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+
+from app.modules.commerce.buyer_id import BUYER_ID_TYPES, normalize_buyer_identification
 
 
 class ShippingAddress(BaseModel):
@@ -125,12 +127,65 @@ class OrderStatusUpdateRequest(BaseModel):
         return cleaned or None
 
 
+class CounterSaleItem(BaseModel):
+    product_id: UUID
+    quantity: int = Field(ge=1, le=999)
+
+
+class CounterSaleRequest(BaseModel):
+    """In-store cash sale. A Clientes account is optional."""
+
+    customer_id: UUID | None = None
+    customer_name: str | None = Field(default=None, max_length=255)
+    customer_phone: str | None = Field(default=None, max_length=30)
+    customer_notes: str | None = Field(default=None, max_length=1000)
+    buyer_id_type: Literal[*BUYER_ID_TYPES] | None = None
+    buyer_id_number: str | None = Field(default=None, max_length=20)
+    address_line: str | None = Field(default=None, max_length=255)
+    address_reference: str | None = Field(default=None, max_length=255)
+    city: str | None = Field(default=None, max_length=100)
+    province: str | None = Field(default=None, max_length=100)
+    country: str | None = Field(default=None, max_length=100)
+    postal_code: str | None = Field(default=None, max_length=20)
+    items: list[CounterSaleItem] = Field(min_length=1, max_length=50)
+
+    @field_validator(
+        "customer_name",
+        "customer_phone",
+        "customer_notes",
+        "address_line",
+        "address_reference",
+        "city",
+        "province",
+        "country",
+        "postal_code",
+    )
+    @classmethod
+    def normalize_optional_text(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        cleaned = " ".join(value.strip().split())
+        return cleaned or None
+
+    @model_validator(mode="after")
+    def check_buyer_id(self):
+        self.buyer_id_type, self.buyer_id_number = normalize_buyer_identification(
+            self.buyer_id_type, self.buyer_id_number
+        )
+        if self.buyer_id_type and not (self.address_line and self.city and self.province):
+            raise ValueError("La factura necesita dirección, ciudad y provincia")
+        if self.buyer_id_type and self.customer_id is None and not self.customer_phone:
+            raise ValueError("La factura necesita el teléfono del cliente")
+        return self
+
+
 class OrderRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
     order_number: str
     status: str
+    channel: str = "WEB"
     currency: str
     subtotal: Decimal
     tax_total: Decimal

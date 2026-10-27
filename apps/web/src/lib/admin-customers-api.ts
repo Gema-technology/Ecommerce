@@ -5,9 +5,34 @@ export type Customer = {
   email: string;
   first_name: string;
   last_name: string;
+  phone?: string | null;
+  tax_id_type?: "CEDULA" | "RUC" | "PASAPORTE" | null;
+  tax_id?: string | null;
+  address_line?: string | null;
+  address_reference?: string | null;
+  city?: string | null;
+  province?: string | null;
+  country?: string | null;
+  postal_code?: string | null;
   is_active: boolean;
   allow_cash_on_delivery: boolean;
   roles: string[];
+};
+
+export type CustomerWrite = {
+  email: string;
+  first_name: string;
+  last_name: string;
+  phone?: string | null;
+  tax_id_type?: "CEDULA" | "RUC" | "PASAPORTE" | null;
+  tax_id?: string | null;
+  address_line?: string | null;
+  address_reference?: string | null;
+  city?: string | null;
+  province?: string | null;
+  country?: string | null;
+  postal_code?: string | null;
+  password?: string;
 };
 
 function apiBase(): string {
@@ -60,6 +85,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   if (!response.ok) {
     throw new ApiError(response.status, await parseError(response));
   }
+  if (response.status === 204) return undefined as T;
   return (await response.json()) as T;
 }
 
@@ -86,6 +112,23 @@ export const adminCustomersApi = {
       qs.set("is_active", String(params.is_active));
     }
     return request<CustomerListResponse>(`/api/v1/admin/customers?${qs}`);
+  },
+  create(payload: CustomerWrite) {
+    return request<Customer>("/api/v1/admin/customers", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
+  update(userId: string, payload: CustomerWrite) {
+    return request<Customer>(`/api/v1/admin/customers/${userId}`, {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    });
+  },
+  remove(userId: string) {
+    return request<void>(`/api/v1/admin/customers/${userId}`, {
+      method: "DELETE",
+    });
   },
   setCashOnDelivery(userId: string, allow: boolean) {
     return request<Customer>(`/api/v1/admin/customers/${userId}/cash-on-delivery`, {

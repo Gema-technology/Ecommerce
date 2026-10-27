@@ -46,6 +46,20 @@ function buyerIdTypeLabel(type: string | null | undefined): string {
   }
 }
 
+function buyerAddressFromOrder(order: Order): string {
+  const address = order.shipping_address;
+  if (!address) return "";
+  return [
+    address.address_line,
+    address.reference,
+    address.city,
+    address.province,
+    address.postal_code,
+  ]
+    .filter(Boolean)
+    .join(", ");
+}
+
 function orderStatusBadgeClass(status: string): string {
   switch (status) {
     case "PENDING_PAYMENT":
@@ -125,6 +139,8 @@ export default function AdminOrderDetailPage() {
   const [buyerIdType, setBuyerIdType] = useState<BuyerIdType>("CONSUMIDOR_FINAL");
   const [buyerIdNumber, setBuyerIdNumber] = useState("");
   const [buyerName, setBuyerName] = useState("");
+  const [buyerEmail, setBuyerEmail] = useState("");
+  const [buyerAddress, setBuyerAddress] = useState("");
 
   const loadDocs = useCallback(async (orderId: string) => {
     try {
@@ -142,6 +158,8 @@ export default function AdminOrderDetailPage() {
         setBuyerIdType((o.buyer_id_type as BuyerIdType) || "CONSUMIDOR_FINAL");
         setBuyerIdNumber(o.buyer_id_number || "");
         setBuyerName(o.customer_name || "");
+        setBuyerEmail(o.customer_email || "");
+        setBuyerAddress(buyerAddressFromOrder(o));
         await loadDocs(o.id);
       } catch (err) {
         setError(err instanceof ApiError ? err.message : "Pedido no encontrado");
@@ -211,6 +229,8 @@ export default function AdminOrderDetailPage() {
         buyer_id_number:
           buyerIdType === "CONSUMIDOR_FINAL" ? null : buyerIdNumber || null,
         buyer_name: buyerName || null,
+        buyer_email: buyerEmail || null,
+        buyer_address: buyerAddress || null,
         send_to_sri: docType === "FACTURA",
       });
       setDocs((prev) => [doc, ...prev.filter((d) => d.id !== doc.id)]);
@@ -304,6 +324,9 @@ export default function AdminOrderDetailPage() {
               <dl className="space-y-3 text-sm">
                 <MetaRow label="Nombre">
                   {order.customer_name || "—"}
+                </MetaRow>
+                <MetaRow label="Origen">
+                  {order.channel === "COUNTER" ? "Mostrador" : "Tienda web"}
                 </MetaRow>
                 <MetaRow label="Correo">
                   {order.customer_email ? (
@@ -617,7 +640,9 @@ export default function AdminOrderDetailPage() {
                   <div>
                     <h3 className="font-medium">Emitir comprobante</h3>
                     <p className="mt-1 text-sm text-secondary">
-                      Confirma los datos del comprador antes de emitir.
+                      La factura usa identificación, nombre, correo y dirección.
+                      Si no hay identificación, el comprobante queda como
+                      consumidor final.
                     </p>
                   </div>
                   <div className="grid gap-3 sm:grid-cols-2">
@@ -654,6 +679,20 @@ export default function AdminOrderDetailPage() {
                       <Input
                         value={buyerName}
                         onChange={(e) => setBuyerName(e.target.value)}
+                      />
+                    </FormField>
+                    <FormField label="Correo">
+                      <Input
+                        type="email"
+                        value={buyerEmail}
+                        onChange={(e) => setBuyerEmail(e.target.value)}
+                      />
+                    </FormField>
+                    <FormField label="Dirección" className="sm:col-span-2">
+                      <Input
+                        value={buyerAddress}
+                        onChange={(e) => setBuyerAddress(e.target.value)}
+                        required={buyerIdType !== "CONSUMIDOR_FINAL"}
                       />
                     </FormField>
                   </div>

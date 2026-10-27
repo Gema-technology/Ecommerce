@@ -1,3 +1,5 @@
+from datetime import UTC, datetime
+from decimal import Decimal
 from math import ceil
 from uuid import UUID
 
@@ -5,15 +7,20 @@ from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session, joinedload
 
+from app.modules.catalog.models import Product
+from app.modules.commerce.tax import calculate_tax
 from app.modules.inventory.models import InventoryReservation, ReservationStatus
+from app.modules.inventory.schemas import MovementRequest
 from app.modules.inventory.service import InventoryService
 from app.modules.notifications.service import (
+    EVENT_ORDER_PAID,
     EVENT_ORDER_SHIPPED,
     notify_order_event,
 )
-from app.modules.orders.models import Order, OrderStatus, OrderStatusEvent
+from app.modules.orders.models import Order, OrderItem, OrderStatus, OrderStatusEvent
 from app.modules.orders.repository import OrderRepository
 from app.modules.orders.schemas import (
+    CounterSaleRequest,
     OrderItemRead,
     OrderListResponse,
     OrderRead,
@@ -26,7 +33,11 @@ from app.modules.orders.transitions import (
     allowed_transitions_for,
     is_valid_fulfillment_transition,
 )
+from app.modules.payments.models import Payment, PaymentStatus
+from app.modules.pricing.models import PriceCurrency
+from app.modules.pricing.service import PricingService
 from app.modules.roles.models import User
+from app.modules.users.service import UserService
 
 
 class OrderService:
@@ -120,6 +131,7 @@ class OrderService:
             id=order.id,
             order_number=order.order_number,
             status=order.status,
+            channel=order.channel,
             currency=order.currency,
             subtotal=order.subtotal,
             tax_total=order.tax_total,
@@ -338,3 +350,221 @@ class OrderService:
             total=total,
             total_pages=pages,
         )
+
+    def create_counter_sale(self, admin: User, payload: CounterSaleRequest) -> OrderRead:
+        """Sell in store for cash and consume stock. No customer account is required."""
+        try:
+            order = self._create_counter_sale(admin, payload)
+            self.db.commit()
+        except Exception:
+            self.db.rollback()
+            raise
+
+        if order.customer_email:
+            notify_order_event(self.db, order.id, EVENT_ORDER_PAID)
+
+        loaded = self.repo.get_by_id(order.id)
+        assert loaded is not None
+        return self._to_read(
+            loaded,
+            include_customer=True,
+            include_reservations=True,
+            include_history=True,
+        )
+
+    def _create_counter_sale(self, admin: User, payload: CounterSaleRequest) -> Order:
+        product_ids = [item.product_id for item in payload.items]
+        if len(product_ids) != len(set(product_ids)):
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Cada producto solo puede aparecer una vez",
+            )
+
+        customer: User | None = None
+        if payload.customer_id is not None:
+            customer = UserService(self.db)._require_customer(payload.customer_id)
+            if not customer.is_active:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="El cliente está inactivo",
+                )
+
+        pricing = PricingService(self.db)
+        price_map = pricing.map_effective_prices(product_ids)
+        lines: list[tuple[Product, int, Decimal, Decimal]] = []
+        subtotal = Decimal("0")
+        discount_total = Decimal("0")
+
+        for item in payload.items:
+            product = self.db.scalar(
+                select(Product).where(Product.id == item.product_id).with_for_update()
+            )
+            if product is None or not product.is_active:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="Product unavailable",
+                )
+            effective = price_map.get(product.id)
+            if effective is None:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail=f"Price unavailable for product: {product.name}",
+                )
+            unit = Decimal(effective.amount).quantize(Decimal("0.0001"))
+            line_discount = Decimal(effective.unit_discount * item.quantity).quantize(
+                Decimal("0.0001")
+            )
+            line_total = Decimal(unit * item.quantity).quantize(Decimal("0.0001"))
+            subtotal += line_total
+            discount_total += line_discount
+            lines.append((product, item.quantity, unit, line_discount))
+
+        subtotal = subtotal.quantize(Decimal("0.0001"))
+        discount_total = discount_total.quantize(Decimal("0.0001"))
+        merchandise = (subtotal - discount_total).quantize(Decimal("0.0001"))
+        if merchandise < 0:
+            merchandise = Decimal("0.0000")
+        tax_total = calculate_tax(taxable_subtotal=merchandise)
+        total = (merchandise + tax_total).quantize(Decimal("0.0001"))
+
+        if customer is not None:
+            buyer_name = f"{customer.first_name} {customer.last_name}".strip()
+            buyer_email = customer.email
+            buyer_phone = customer.phone
+            buyer_id = customer.id
+        else:
+            buyer_name = payload.customer_name
+            buyer_email = None
+            buyer_phone = payload.customer_phone
+            buyer_id = None
+
+        id_type = payload.buyer_id_type
+        id_number = payload.buyer_id_number
+        if id_type is None and customer is not None and customer.tax_id:
+            id_type = customer.tax_id_type
+            id_number = customer.tax_id
+        if customer is not None and id_type and id_number:
+            customer.tax_id_type = id_type
+            customer.tax_id = id_number
+
+        address_line = payload.address_line or (customer.address_line if customer else None)
+        city = payload.city or (customer.city if customer else None)
+        province = payload.province or (customer.province if customer else None)
+        country = payload.country or (customer.country if customer else None) or "Ecuador"
+        reference = payload.address_reference or (
+            customer.address_reference if customer else None
+        )
+        postal_code = payload.postal_code or (customer.postal_code if customer else None)
+        if id_type and not (address_line and city and province and buyer_phone):
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="La factura necesita teléfono, dirección, ciudad y provincia",
+            )
+        shipping_address = None
+        if address_line and city and province:
+            shipping_address = {
+                "recipient_name": buyer_name or "Consumidor final",
+                "phone": buyer_phone or "",
+                "address_line": address_line,
+                "reference": reference,
+                "city": city,
+                "province": province,
+                "country": country,
+                "postal_code": postal_code,
+            }
+            if customer is not None:
+                customer.address_line = address_line
+                customer.address_reference = reference
+                customer.city = city
+                customer.province = province
+                customer.country = country
+                customer.postal_code = postal_code
+
+        order = Order(
+            user_id=buyer_id,
+            channel="COUNTER",
+            order_number=self.repo.next_order_number(),
+            status=OrderStatus.PAID.value,
+            currency=PriceCurrency.USD.value,
+            subtotal=subtotal,
+            tax_total=tax_total,
+            shipping_total=Decimal("0.0000"),
+            discount_total=discount_total,
+            total=total,
+            customer_email=buyer_email,
+            customer_name=buyer_name,
+            customer_phone=buyer_phone,
+            customer_notes=payload.customer_notes,
+            buyer_id_type=id_type,
+            buyer_id_number=id_number,
+            shipping_address=shipping_address,
+        )
+        self.repo.add(order)
+
+        for product, quantity, unit, line_discount in lines:
+            line_total = Decimal(unit * quantity).quantize(Decimal("0.0001"))
+            self.repo.add_item(
+                OrderItem(
+                    order_id=order.id,
+                    product_id=product.id,
+                    product_name_snapshot=product.name,
+                    sku_snapshot=product.sku,
+                    unit_price=unit,
+                    quantity=quantity,
+                    line_total=line_total,
+                    line_discount=line_discount,
+                )
+            )
+            try:
+                self.inventory.sale(
+                    product.id,
+                    MovementRequest(
+                        quantity=quantity,
+                        reference_type="order",
+                        reference_id=str(order.id),
+                        notes=f"Venta en mostrador {order.order_number}",
+                    ),
+                    admin,
+                    commit=False,
+                )
+            except HTTPException as exc:
+                if exc.status_code == status.HTTP_409_CONFLICT:
+                    raise HTTPException(
+                        status_code=status.HTTP_409_CONFLICT,
+                        detail=f"Stock insuficiente para {product.name}",
+                    ) from exc
+                if exc.status_code == status.HTTP_404_NOT_FOUND:
+                    raise HTTPException(
+                        status_code=status.HTTP_409_CONFLICT,
+                        detail=f"El producto {product.name} no tiene inventario",
+                    ) from exc
+                raise
+
+        now = datetime.now(UTC)
+        self.db.add(
+            Payment(
+                order_id=order.id,
+                provider="manual",
+                provider_payment_id=f"counter_{order.id}",
+                method="CASH",
+                status=PaymentStatus.SUCCEEDED.value,
+                amount=total,
+                currency=PriceCurrency.USD.value,
+                metadata_json={
+                    "source": "counter_sale",
+                    "collected_by": str(admin.id),
+                },
+                paid_at=now,
+            )
+        )
+        self.db.add(
+            OrderStatusEvent(
+                order_id=order.id,
+                from_status=OrderStatus.PENDING_PAYMENT.value,
+                to_status=OrderStatus.PAID.value,
+                actor_user_id=admin.id,
+                note="Venta en mostrador.",
+            )
+        )
+        self.db.flush()
+        return order

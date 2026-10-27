@@ -76,6 +76,11 @@ export default function AdminOrdersPage() {
 
   return (
     <AdminShell title="Pedidos">
+      <div className="mb-4 flex justify-end">
+        <Link href="/admin/orders/new" className="btn-primary">
+          Nueva venta
+        </Link>
+      </div>
       <AdminFilterBar
         onSubmit={onFilter}
         onClear={() => {
@@ -133,7 +138,7 @@ export default function AdminOrdersPage() {
                 {order.order_number}
               </Link>
             </td>
-            <td>{order.customer_email ?? "—"}</td>
+            <td>{order.customer_name || order.customer_email || "—"}</td>
             <td>{new Date(order.created_at).toLocaleString("es-EC")}</td>
             <td>{orderStatusLabel(order.status)}</td>
             <td>{money(order.total, order.currency)}</td>

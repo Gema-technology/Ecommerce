@@ -57,12 +57,17 @@ const nextConfig: NextConfig = {
     ? { allowedDevOrigins }
     : {}),
   async rewrites() {
-    return [
-      {
-        source: "/api/:path*",
-        destination: `${apiOrigin}/api/:path*`,
-      },
-    ];
+    return {
+      // Checked after App Router routes. GET /api/v1/health is served by
+      // src/app/api/v1/health/route.ts. Every other /api/* path, including
+      // /api/v1/health/ready, still proxies to FastAPI.
+      fallback: [
+        {
+          source: "/api/:path*",
+          destination: `${apiOrigin}/api/:path*`,
+        },
+      ],
+    };
   },
 };
 
