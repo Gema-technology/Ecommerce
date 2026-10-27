@@ -1,6 +1,8 @@
 import hashlib
+import logging
 import secrets
 from datetime import UTC, datetime, timedelta
+from html import escape
 from uuid import UUID
 
 from fastapi import HTTPException, status
@@ -26,10 +28,50 @@ from app.modules.users.repository import UserRepository
 
 INVITE_TTL = timedelta(hours=48)
 STAFF_ROLES = frozenset({ROLE_ADMIN, ROLE_SUPER_ADMIN})
+logger = logging.getLogger("gema.employees")
 
 
 def hash_invite_token(token: str) -> str:
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+def _send_invite_email(*, to_address: str, name: str, invite_url: str) -> bool:
+    """Send the accept link when SMTP is enabled. Never raises."""
+    if not settings.email_enabled:
+        return False
+    from app.modules.notifications.service import get_email_transport
+    from app.modules.notifications.smtp import EmailMessagePayload
+
+    greeting = name or "Hola"
+    subject = "Invitación al equipo de GEMA Technology"
+    text = (
+        f"Hola {greeting},\n\n"
+        "Te invitaron al panel de GEMA Technology. "
+        "Abre este enlace en las próximas 48 horas y define tu contraseña:\n\n"
+        f"{invite_url}\n\n"
+        "— GEMA Technology\n"
+    )
+    safe_name = escape(greeting)
+    safe_url = escape(invite_url, quote=True)
+    html = (
+        f"<p>Hola {safe_name},</p>"
+        "<p>Te invitaron al panel de GEMA Technology. El enlace vence en 48 horas.</p>"
+        f'<p><a href="{safe_url}">Activar cuenta</a></p>'
+        "<p>— GEMA Technology</p>"
+    )
+    try:
+        get_email_transport().send(
+            EmailMessagePayload(
+                to_address=to_address,
+                subject=subject,
+                text_body=text,
+                html_body=html,
+            )
+        )
+    except Exception:
+        logger.exception("employee_invite_email_failed")
+        return False
+    return True
 
 
 def _invite_base_url() -> str:
@@ -99,10 +141,17 @@ class EmployeeService:
 
     def _build_invite_response(self, employee: Employee, token: str) -> EmployeeInviteResponse:
         item = self._to_list_item(employee)
-        invite_url = None
-        if not settings.is_production:
-            invite_url = f"{_invite_base_url()}/accept-invite?token={token}"
-        return EmployeeInviteResponse(**item.model_dump(), invite_url=invite_url)
+        invite_url = f"{_invite_base_url()}/accept-invite?token={token}"
+        email_sent = _send_invite_email(
+            to_address=item.email,
+            name=f"{item.first_name} {item.last_name}".strip(),
+            invite_url=invite_url,
+        )
+        return EmployeeInviteResponse(
+            **item.model_dump(),
+            invite_url=invite_url,
+            email_sent=email_sent,
+        )
 
     def _rotate_access_token(
         self, employee: Employee, user: User, *, invited_by: User
@@ -133,7 +182,10 @@ class EmployeeService:
 
         user = self.users.get_by_email(data.email)
         existing_employee = self.employees.get_by_user_id(user.id) if user else None
-        if existing_employee is not None and existing_employee.status != EmployeeStatus.INACTIVE.value:
+        if (
+            existing_employee is not None
+            and existing_employee.status != EmployeeStatus.INACTIVE.value
+        ):
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail="User is already an employee",

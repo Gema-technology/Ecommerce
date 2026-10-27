@@ -134,7 +134,11 @@ export default function AdminEmployeesPage() {
       setJobTitle("");
       setRole("ADMIN");
       await load();
-      toast.success("Invitación creada.");
+      toast.success(
+        created.email_sent
+          ? "Invitación enviada por correo. El enlace también está aquí."
+          : "Invitación lista. El correo no está activo: copia el enlace y envíalo.",
+      );
     } catch (err) {
       const msg =
         err instanceof ApiError ? err.message : "No se pudo enviar la invitación";
@@ -202,7 +206,11 @@ export default function AdminEmployeesPage() {
       const result = await adminEmployeesApi.resendInvite(employee.id);
       setInviteUrl(result.invite_url ?? null);
       await load();
-      toast.success("Invitación reenviada.");
+      toast.success(
+        result.email_sent
+          ? "Invitación reenviada por correo."
+          : "Nuevo enlace listo. Cópialo y envíalo: el correo no está activo.",
+      );
     } catch (err) {
       const msg =
         err instanceof ApiError
@@ -251,8 +259,9 @@ export default function AdminEmployeesPage() {
       {confirmDialog}
       <p className="mb-4 max-w-2xl text-sm text-secondary">
         Empleados con acceso al panel. Solo SUPER_ADMIN puede invitar, reenviar
-        enlace, resetear contraseña o cambiar roles. El personal no se registra
-        por la tienda.
+        enlace, resetear contraseña o cambiar roles. Si el correo no está
+        activo, la invitación es el enlace que aparece al invitar. El personal
+        no se registra por la tienda.
       </p>
 
       {isSuperAdmin ? (
@@ -328,7 +337,8 @@ export default function AdminEmployeesPage() {
             Enlace de invitación (compartir con el empleado)
           </p>
           <p className="text-xs text-secondary">
-            Válido 48 horas. Copia el enlace y envíalo por un canal seguro.
+            Válido 48 horas. Compártelo con el empleado. Sin correo configurado,
+            este enlace es la invitación.
           </p>
           <div className="flex flex-wrap items-center gap-2">
             <code className="min-w-0 flex-1 break-all rounded border border-border bg-surface-secondary px-3 py-2 font-mono text-xs">

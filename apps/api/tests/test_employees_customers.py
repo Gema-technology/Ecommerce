@@ -252,3 +252,37 @@ def test_admin_cannot_reset_password(client: TestClient, admin_user: User) -> No
     emp_id = listed.json()["items"][0]["id"]
     assert client.post(f"/api/v1/admin/employees/{emp_id}/reset-password").status_code == 403
     assert client.post(f"/api/v1/admin/employees/{emp_id}/resend-invite").status_code == 403
+
+
+def test_invite_returns_link_and_sends_email_when_enabled(
+    client: TestClient,
+    super_admin_user: User,
+    monkeypatch,
+) -> None:
+    from app.core.config import settings
+    from app.modules.notifications.service import set_email_transport
+    from app.modules.notifications.smtp import MemoryTransport
+
+    transport = MemoryTransport()
+    set_email_transport(transport)
+    monkeypatch.setattr(settings, "email_enabled", True)
+    try:
+        login_as(client, super_admin_user)
+        invite = client.post(
+            "/api/v1/admin/employees/invite",
+            json={
+                "email": "correo.equipo@example.com",
+                "first_name": "Ana",
+                "last_name": "Equipo",
+                "role": "ADMIN",
+            },
+        )
+        assert invite.status_code == 201, invite.text
+        body = invite.json()
+        assert body["invite_url"]
+        assert body["email_sent"] is True
+        assert len(transport.sent) == 1
+        assert transport.sent[0].to_address == "correo.equipo@example.com"
+        assert body["invite_url"] in transport.sent[0].text_body
+    finally:
+        set_email_transport(None)

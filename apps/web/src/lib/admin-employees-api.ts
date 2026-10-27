@@ -13,6 +13,7 @@ export type Employee = {
   invited_at: string | null;
   accepted_at: string | null;
   invite_url?: string | null;
+  email_sent?: boolean;
 };
 
 export type StaffRole = "ADMIN" | "SUPER_ADMIN";

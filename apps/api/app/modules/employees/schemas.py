@@ -64,6 +64,7 @@ class EmployeeInviteRequest(BaseModel):
 
 class EmployeeInviteResponse(EmployeeListItem):
     invite_url: str | None = None
+    email_sent: bool = False
 
 
 class EmployeeRoleUpdate(BaseModel):
