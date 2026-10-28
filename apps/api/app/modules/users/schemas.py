@@ -93,7 +93,7 @@ class CustomerCreate(BaseModel):
     email: str = Field(min_length=3, max_length=320)
     password: str | None = Field(default=None, min_length=8, max_length=128)
     first_name: str = Field(min_length=1, max_length=100)
-    last_name: str = Field(min_length=1, max_length=100)
+    last_name: str = Field(default="", max_length=100)
     phone: str = Field(min_length=7, max_length=30)
     tax_id_type: str = Field(min_length=1, max_length=20)
     tax_id: str = Field(min_length=1, max_length=20)
@@ -109,13 +109,18 @@ class CustomerCreate(BaseModel):
     def normalize_customer_email(cls, value: str) -> str:
         return normalize_email(value)
 
-    @field_validator("first_name", "last_name")
+    @field_validator("first_name")
     @classmethod
-    def strip_customer_name(cls, value: str) -> str:
+    def strip_customer_first_name(cls, value: str) -> str:
         cleaned = value.strip()
         if not cleaned:
             raise ValueError("Name cannot be empty")
         return cleaned
+
+    @field_validator("last_name")
+    @classmethod
+    def strip_customer_last_name(cls, value: str) -> str:
+        return value.strip()
 
     @field_validator("phone")
     @classmethod
@@ -159,6 +164,8 @@ class CustomerCreate(BaseModel):
             self.tax_id_type, self.tax_id
         )
         _require_billing(self)
+        if self.tax_id_type != "RUC" and not self.last_name.strip():
+            raise ValueError("El apellido es obligatorio para cédula y pasaporte")
         return self
 
 
@@ -166,7 +173,7 @@ class CustomerUpdate(BaseModel):
     email: str | None = Field(default=None, min_length=3, max_length=320)
     password: str | None = Field(default=None, min_length=8, max_length=128)
     first_name: str | None = Field(default=None, min_length=1, max_length=100)
-    last_name: str | None = Field(default=None, min_length=1, max_length=100)
+    last_name: str | None = Field(default=None, max_length=100)
     phone: str | None = Field(default=None, max_length=30)
     tax_id_type: str | None = Field(default=None, max_length=20)
     tax_id: str | None = Field(default=None, max_length=20)
@@ -184,15 +191,22 @@ class CustomerUpdate(BaseModel):
             return None
         return normalize_email(value)
 
-    @field_validator("first_name", "last_name")
+    @field_validator("first_name")
     @classmethod
-    def strip_customer_name(cls, value: str | None) -> str | None:
+    def strip_customer_first_name(cls, value: str | None) -> str | None:
         if value is None:
             return None
         cleaned = value.strip()
         if not cleaned:
             raise ValueError("Name cannot be empty")
         return cleaned
+
+    @field_validator("last_name")
+    @classmethod
+    def strip_customer_last_name(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        return value.strip()
 
     @field_validator("phone")
     @classmethod

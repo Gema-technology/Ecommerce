@@ -357,7 +357,7 @@ export default function AdminCustomersPage() {
         {items.map((u) => (
           <tr key={u.id}>
             <td>
-              {u.first_name} {u.last_name}
+              {[u.first_name, u.last_name].filter(Boolean).join(" ")}
             </td>
             <td className="font-mono text-xs">{u.email}</td>
             <td>{u.phone || "—"}</td>
@@ -410,39 +410,14 @@ export default function AdminCustomersPage() {
       >
         <form onSubmit={(event) => void saveCustomer(event)} className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
-            <FormField label="Nombre" required>
-              <Input
-                value={firstName}
-                onChange={(event) => setFirstName(event.target.value)}
-                required
-              />
-            </FormField>
-            <FormField label="Apellido" required>
-              <Input
-                value={lastName}
-                onChange={(event) => setLastName(event.target.value)}
-                required
-              />
-            </FormField>
-            <FormField label="Correo" required>
-              <Input
-                type="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                required
-              />
-            </FormField>
-            <FormField label="Teléfono" required>
-              <Input
-                value={phone}
-                onChange={(event) => setPhone(event.target.value)}
-                required
-              />
-            </FormField>
             <FormField label="Identificación" required>
               <Select
                 value={taxIdType}
-                onChange={(event) => setTaxIdType(event.target.value)}
+                onChange={(event) => {
+                  const next = event.target.value;
+                  setTaxIdType(next);
+                  if (next === "RUC") setLastName("");
+                }}
                 required
               >
                 <option value="">Seleccionar…</option>
@@ -456,6 +431,37 @@ export default function AdminCustomersPage() {
                 value={taxId}
                 onChange={(event) => setTaxId(event.target.value)}
                 inputMode={taxIdType === "PASAPORTE" ? "text" : "numeric"}
+                required
+              />
+            </FormField>
+            <FormField label={taxIdType === "RUC" ? "Razón social" : "Nombre"} required>
+              <Input
+                value={firstName}
+                onChange={(event) => setFirstName(event.target.value)}
+                required
+              />
+            </FormField>
+            {taxIdType !== "RUC" ? (
+              <FormField label="Apellido" required>
+                <Input
+                  value={lastName}
+                  onChange={(event) => setLastName(event.target.value)}
+                  required
+                />
+              </FormField>
+            ) : null}
+            <FormField label="Correo" required>
+              <Input
+                type="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                required
+              />
+            </FormField>
+            <FormField label="Teléfono" required>
+              <Input
+                value={phone}
+                onChange={(event) => setPhone(event.target.value)}
                 required
               />
             </FormField>

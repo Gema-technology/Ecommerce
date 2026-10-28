@@ -72,6 +72,41 @@ def test_admin_customer_crud(client: TestClient, admin_user: User) -> None:
     assert client.get(f"/api/v1/admin/customers/{customer_id}").status_code == 404
 
 
+def test_company_customer_does_not_require_last_name(
+    client: TestClient,
+    admin_user: User,
+) -> None:
+    login_as(client, admin_user)
+    created = client.post(
+        "/api/v1/admin/customers",
+        json={
+            "email": "empresa@example.com",
+            "first_name": "Comercial Andina Cia. Ltda.",
+            "last_name": "",
+            "phone": "0998887766",
+            "tax_id_type": "RUC",
+            "tax_id": "1790012345001",
+            "address_line": "Av. Amazonas N34-123",
+            "city": "Quito",
+            "province": "Pichincha",
+        },
+    )
+    assert created.status_code == 201, created.text
+    assert created.json()["last_name"] == ""
+    assert created.json()["first_name"] == "Comercial Andina Cia. Ltda."
+
+    person = client.post(
+        "/api/v1/admin/customers",
+        json={
+            "email": "persona-sin-apellido@example.com",
+            "first_name": "Luis",
+            "last_name": "",
+            **BILLING,
+        },
+    )
+    assert person.status_code == 422
+
+
 def test_admin_creates_customer_without_password(
     client: TestClient,
     admin_user: User,

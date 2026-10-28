@@ -204,6 +204,12 @@ class UserService:
         ):
             if field in updates:
                 setattr(user, field, updates[field])
+        if (user.tax_id_type or "") != "RUC" and not (user.last_name or "").strip():
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="El apellido es obligatorio para cédula y pasaporte",
+            )
+        user.last_name = (user.last_name or "").strip()
         self.users.save(user)
         self.db.commit()
         updated = self.users.get_by_id(user.id)
