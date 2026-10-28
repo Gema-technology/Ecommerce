@@ -8,7 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, joinedload
 
 from app.modules.catalog.models import Product
-from app.modules.commerce.tax import calculate_tax
+from app.modules.commerce.tax import calculate_tax, store_tax_regime
 from app.modules.inventory.models import InventoryReservation, ReservationStatus
 from app.modules.inventory.schemas import MovementRequest
 from app.modules.inventory.service import InventoryService
@@ -424,7 +424,10 @@ class OrderService:
         merchandise = (subtotal - discount_total).quantize(Decimal("0.0001"))
         if merchandise < 0:
             merchandise = Decimal("0.0000")
-        tax_total = calculate_tax(taxable_subtotal=merchandise)
+        tax_total = calculate_tax(
+            taxable_subtotal=merchandise,
+            tax_regime=store_tax_regime(self.db),
+        )
         total = (merchandise + tax_total).quantize(Decimal("0.0001"))
 
         if customer is not None:

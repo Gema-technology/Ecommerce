@@ -459,7 +459,13 @@ class SriService:
         # XML base sin impuestos = merchandise + shipping (IVA only on merchandise in v1).
         taxable_base = _money(merchandise + shipping)
 
-        if settings.commerce_tax_enabled:
+        if cfg.tax_regime == TaxRegime.RIMPE_NEGOCIO_POPULAR.value:
+            # Negocio Popular no percibe IVA. El comprobante sale con tarifa 0
+            # aunque la tienda tenga COMMERCE_TAX_ENABLED.
+            tax_rate = Decimal("0.0000")
+            tax_total = Decimal("0.0000")
+            total = taxable_base
+        elif settings.commerce_tax_enabled:
             tax_rate = _money(Decimal(str(settings.commerce_tax_rate)))
             tax_total = _money(order.tax_total)
             total = _money(order.total)
@@ -498,11 +504,7 @@ class SriService:
         lines: list[FacturaLine] = []
         for item in order.items:
             line_base = _money(item.line_total)
-            iva = (
-                _money(line_base * tax_rate)
-                if settings.commerce_tax_enabled
-                else Decimal("0.0000")
-            )
+            iva = _money(line_base * tax_rate) if tax_rate > 0 else Decimal("0.0000")
             lines.append(
                 FacturaLine(
                     codigo=item.sku_snapshot[:25],
@@ -525,7 +527,7 @@ class SriService:
                     descuento=Decimal("0"),
                     precio_total_sin_impuesto=shipping,
                     # Shipping not in checkout taxable base (v1).
-                    iva_rate=tax_rate if settings.commerce_tax_enabled else Decimal("0"),
+                    iva_rate=tax_rate if tax_rate > 0 else Decimal("0"),
                     iva_valor=Decimal("0.0000"),
                 )
             )

@@ -31,6 +31,7 @@ def compute_order_totals(
     discount_total: Decimal,
     shipping_address: ShippingAddress | None,
     store_config: StoreConfigRead | None = None,
+    tax_regime: str | None = None,
 ) -> OrderTotals:
     subtotal = _money(subtotal)
     discount_total = _money(discount_total)
@@ -44,7 +45,7 @@ def compute_order_totals(
         shipping_address=shipping_address,
         store_config=store_config,
     )
-    tax_total = calculate_tax(taxable_subtotal=merchandise)
+    tax_total = calculate_tax(taxable_subtotal=merchandise, tax_regime=tax_regime)
     total = _money(merchandise + shipping_total + tax_total)
 
     return OrderTotals(

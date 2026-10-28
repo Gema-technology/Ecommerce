@@ -175,6 +175,71 @@ def test_checkout_tax_enabled_adds_flat_iva(
     assert totals.total == Decimal("1148.8500")
 
 
+def test_rimpe_negocio_popular_does_not_charge_iva(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(config_mod.settings, "commerce_tax_enabled", True)
+    monkeypatch.setattr(config_mod.settings, "commerce_tax_rate", Decimal("0.15"))
+    monkeypatch.setattr(config_mod.settings, "shipping_enabled", False)
+
+    tax = calculate_tax(
+        taxable_subtotal=Decimal("100.0000"),
+        tax_regime="RIMPE_NEGOCIO_POPULAR",
+    )
+    assert tax == Decimal("0.0000")
+    totals = compute_order_totals(
+        subtotal=Decimal("100.0000"),
+        discount_total=Decimal("0"),
+        shipping_address=_addr(),
+        store_config=None,
+        tax_regime="RIMPE_NEGOCIO_POPULAR",
+    )
+    assert totals.tax_total == Decimal("0.0000")
+    assert totals.total == Decimal("100.0000")
+
+
+def test_rimpe_negocio_popular_factura_has_zero_iva(
+    db_session: Session,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(config_mod.settings, "commerce_tax_enabled", True)
+    monkeypatch.setattr(config_mod.settings, "commerce_tax_rate", Decimal("0.15"))
+    monkeypatch.setattr(config_mod.settings, "app_env", "staging")
+
+    order = _seed_paid_order(
+        db_session,
+        subtotal=Decimal("40.0000"),
+        tax_total=Decimal("6.0000"),
+        shipping_total=Decimal("0"),
+        total=Decimal("46.0000"),
+    )
+    service = _prepare_sri(db_session, tmp_path, monkeypatch)
+    service.update_config(
+        SriConfigUpdate(
+            tax_regime="RIMPE_NEGOCIO_POPULAR",
+            ambiente="1",
+            establecimiento="001",
+            punto_emision="001",
+            dir_matriz="Matriz",
+            dir_establecimiento="Estab",
+            obligado_contabilidad="NO",
+            contribuyente_especial="",
+        )
+    )
+    doc = service.emit_for_order(
+        order.id,
+        EmitFiscalDocumentRequest(
+            doc_type="FACTURA",
+            send_to_sri=False,
+            buyer_address="Av. Amazonas, Quito, Pichincha",
+        ),
+    )
+    assert Decimal(doc.tax_rate) == Decimal("0")
+    assert Decimal(doc.tax_total) == Decimal("0")
+    assert Decimal(doc.total) == Decimal("40.0000")
+
+
 def test_option_a_checkout_total_matches_factura_total(
     db_session: Session,
     tmp_path: Path,
@@ -195,7 +260,11 @@ def test_option_a_checkout_total_matches_factura_total(
     service = _prepare_sri(db_session, tmp_path, monkeypatch)
     doc = service.emit_for_order(
         order.id,
-        EmitFiscalDocumentRequest(doc_type="FACTURA", send_to_sri=False),
+        EmitFiscalDocumentRequest(
+            doc_type="FACTURA",
+            send_to_sri=False,
+            buyer_address="Av. Amazonas, Quito, Pichincha",
+        ),
     )
     assert doc.tax_total == order.tax_total == Decimal("149.8500")
     assert doc.total == order.total == Decimal("1148.8500")
@@ -221,7 +290,11 @@ def test_emit_factura_blocked_in_staging_when_tax_disabled(
     with pytest.raises(HTTPException) as exc:
         service.emit_for_order(
             order.id,
-            EmitFiscalDocumentRequest(doc_type="FACTURA", send_to_sri=False),
+            EmitFiscalDocumentRequest(
+            doc_type="FACTURA",
+            send_to_sri=False,
+            buyer_address="Av. Amazonas, Quito, Pichincha",
+        ),
         )
     assert exc.value.status_code == 400
     assert "COMMERCE_TAX_ENABLED" in str(exc.value.detail)
@@ -247,7 +320,11 @@ def test_emit_factura_matches_zero_tax_order_in_development(
     service = _prepare_sri(db_session, tmp_path, monkeypatch)
     doc = service.emit_for_order(
         order.id,
-        EmitFiscalDocumentRequest(doc_type="FACTURA", send_to_sri=False),
+        EmitFiscalDocumentRequest(
+            doc_type="FACTURA",
+            send_to_sri=False,
+            buyer_address="Av. Amazonas, Quito, Pichincha",
+        ),
     )
     assert doc.tax_total == Decimal("0")
     assert doc.total == order.total == Decimal("999.0000")

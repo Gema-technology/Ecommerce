@@ -9,6 +9,7 @@ from app.core.config import settings
 from app.modules.cart.models import Cart, CartItem, CartStatus
 from app.modules.cart.repository import CartRepository
 from app.modules.catalog.models import Product
+from app.modules.commerce.tax import charges_iva, store_tax_regime
 from app.modules.commerce.totals import compute_order_totals
 from app.modules.inventory.models import InventoryReservation, ReservationStatus
 from app.modules.inventory.schemas import MovementRequest
@@ -197,11 +198,13 @@ class CheckoutService:
     ) -> CheckoutPreviewResponse:
         subtotal, discount_total, items = self._summarize_lines(line_payload)
         store_config = StoreConfigService(self.db).get_read()
+        tax_regime = store_tax_regime(self.db)
         totals = compute_order_totals(
             subtotal=subtotal,
             discount_total=discount_total,
             shipping_address=shipping_address,
             store_config=store_config,
+            tax_regime=tax_regime,
         )
         currency = (
             line_payload[0].effective.currency.value
@@ -216,7 +219,7 @@ class CheckoutService:
             discount_total=totals.discount_total,
             total=totals.total,
             shipping_method=totals.shipping_method,
-            tax_enabled=settings.commerce_tax_enabled,
+            tax_enabled=charges_iva(tax_regime=tax_regime),
             items=items,
         )
 
@@ -224,11 +227,13 @@ class CheckoutService:
         cart, line_payload = self._load_cart_lines(user, for_update=True)
         subtotal, discount_total, preview_items = self._summarize_lines(line_payload)
         store_config = StoreConfigService(self.db).get_read()
+        tax_regime = store_tax_regime(self.db)
         totals = compute_order_totals(
             subtotal=subtotal,
             discount_total=discount_total,
             shipping_address=payload.shipping_address,
             store_config=store_config,
+            tax_regime=tax_regime,
         )
 
         customer_name = payload.shipping_address.recipient_name
