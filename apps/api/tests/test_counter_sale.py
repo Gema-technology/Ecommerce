@@ -1,3 +1,4 @@
+from decimal import Decimal
 from uuid import UUID
 
 from fastapi.testclient import TestClient
@@ -8,6 +9,7 @@ from app.modules.inventory.models import Inventory
 from app.modules.orders.models import Order
 from app.modules.payments.models import Payment, PaymentStatus
 from app.modules.roles.models import User
+from app.modules.sri.models import SriConfig
 from tests.test_orders_checkout import _login, _seed_sellable
 
 
@@ -178,3 +180,46 @@ def test_counter_sale_rejects_insufficient_stock(
     )
     assert inventory is not None
     assert inventory.quantity == 1
+
+
+def test_admin_removes_iva_saved_on_a_negocio_popular_order(
+    client: TestClient,
+    admin_user: User,
+    db_session: Session,
+) -> None:
+    product = _seed_sellable(client, admin_user, sku="CTR-IVA", price="40.00", stock=3)
+    _login(client, admin_user)
+    created = client.post(
+        "/api/v1/admin/orders/counter-sale",
+        json={"items": [{"product_id": product["id"], "quantity": 1}]},
+    )
+    assert created.status_code == 201, created.text
+    order_id = UUID(created.json()["id"])
+    order = db_session.get(Order, order_id)
+    assert order is not None
+    order.tax_total = Decimal("6.0000")
+    order.total = Decimal("46.0000")
+    payment = db_session.scalar(select(Payment).where(Payment.order_id == order.id))
+    assert payment is not None
+    payment.amount = Decimal("46.0000")
+    db_session.merge(
+        SriConfig(
+            id=1,
+            tax_regime="RIMPE_NEGOCIO_POPULAR",
+        )
+    )
+    db_session.commit()
+
+    removed = client.post(f"/api/v1/admin/orders/{order_id}/remove-iva")
+    assert removed.status_code == 200, removed.text
+    body = removed.json()
+    assert Decimal(body["tax_total"]) == Decimal("0")
+    assert Decimal(body["total"]) == Decimal("40.0000")
+
+    db_session.expire_all()
+    payment = db_session.scalar(select(Payment).where(Payment.order_id == order_id))
+    assert payment is not None
+    assert Decimal(payment.amount) == Decimal("40.0000")
+
+    again = client.post(f"/api/v1/admin/orders/{order_id}/remove-iva")
+    assert again.status_code == 409

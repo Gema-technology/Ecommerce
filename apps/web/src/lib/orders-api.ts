@@ -307,6 +307,11 @@ export const ordersApi = {
   adminGet(orderId: string) {
     return request<Order>(`/api/v1/admin/orders/${orderId}`);
   },
+  adminRemoveIva(orderId: string) {
+    return request<Order>(`/api/v1/admin/orders/${orderId}/remove-iva`, {
+      method: "POST",
+    });
+  },
   createCounterSale(payload: CounterSaleRequest) {
     return request<Order>("/api/v1/admin/orders/counter-sale", {
       method: "POST",

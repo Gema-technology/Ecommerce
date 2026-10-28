@@ -8,7 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, joinedload
 
 from app.modules.catalog.models import Product
-from app.modules.commerce.tax import calculate_tax, store_tax_regime
+from app.modules.commerce.tax import RIMPE_NEGOCIO_POPULAR, calculate_tax, store_tax_regime
 from app.modules.inventory.models import InventoryReservation, ReservationStatus
 from app.modules.inventory.schemas import MovementRequest
 from app.modules.inventory.service import InventoryService
@@ -37,6 +37,7 @@ from app.modules.payments.models import Payment, PaymentStatus
 from app.modules.pricing.models import PriceCurrency
 from app.modules.pricing.service import PricingService
 from app.modules.roles.models import User
+from app.modules.sri.models import FiscalDocument
 from app.modules.users.service import UserService
 
 
@@ -317,6 +318,69 @@ class OrderService:
             include_reservations=True,
             include_history=True,
         )
+
+    def remove_incorrect_iva(self, order_id: UUID, admin: User) -> OrderRead:
+        order = self.db.scalar(select(Order).where(Order.id == order_id).with_for_update())
+        if order is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order not found")
+        if order.status == OrderStatus.CANCELLED.value:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Un pedido cancelado no se corrige",
+            )
+        tax = Decimal(order.tax_total or 0)
+        if tax <= 0:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Este pedido no tiene IVA",
+            )
+        if store_tax_regime(self.db) != RIMPE_NEGOCIO_POPULAR:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=(
+                    "Solo se quita el IVA cuando la tienda está en RIMPE Negocio Popular"
+                ),
+            )
+        documents = list(
+            self.db.scalars(
+                select(FiscalDocument).where(FiscalDocument.order_id == order.id)
+            ).all()
+        )
+        for document in documents:
+            if document.status in {"CANCELLED", "REJECTED"}:
+                continue
+            if Decimal(document.tax_total or 0) > 0:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail=(
+                        f"El comprobante {document.document_number} ya incluye IVA. "
+                        "Ese documento no se reescribe desde el pedido."
+                    ),
+                )
+
+        old_total = Decimal(order.total)
+        corrected = (
+            Decimal(order.subtotal)
+            - Decimal(order.discount_total or 0)
+            + Decimal(order.shipping_total or 0)
+        ).quantize(Decimal("0.0001"))
+        order.tax_total = Decimal("0.0000")
+        order.total = corrected
+        payments = list(
+            self.db.scalars(select(Payment).where(Payment.order_id == order.id)).all()
+        )
+        for payment in payments:
+            if payment.provider == "manual" and Decimal(payment.amount) == old_total:
+                payment.amount = corrected
+        self._record_status_event(
+            order,
+            from_status=order.status,
+            to_status=order.status,
+            actor=admin,
+            note="Se quitó el IVA. RIMPE Negocio Popular no lo cobra.",
+        )
+        self.db.commit()
+        return self.admin_get(order_id)
 
     def admin_get(self, order_id: UUID) -> OrderRead:
         order = self.repo.get_by_id(order_id)

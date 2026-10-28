@@ -78,6 +78,15 @@ def admin_list_orders(
     return service.admin_list(page=page, page_size=page_size, status=status)
 
 
+@router.post("/admin/orders/{order_id}/remove-iva", response_model=OrderRead)
+def admin_remove_iva(
+    order_id: UUID,
+    admin: RequireAdmin,
+    service: Annotated[OrderService, Depends(get_order_service)],
+) -> OrderRead:
+    return service.remove_incorrect_iva(order_id, admin)
+
+
 @router.post("/admin/orders/{order_id}/cancel", response_model=OrderRead)
 def admin_cancel_order(
     order_id: UUID,

@@ -134,6 +134,7 @@ export default function AdminOrderDetailPage() {
   const [docs, setDocs] = useState<FiscalDocument[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState(false);
+  const [removingTax, setRemovingTax] = useState(false);
   const [fulfilling, setFulfilling] = useState(false);
   const [emitting, setEmitting] = useState(false);
   const [buyerIdType, setBuyerIdType] = useState<BuyerIdType>("CONSUMIDOR_FINAL");
@@ -189,6 +190,29 @@ export default function AdminOrderDetailPage() {
       toast.error(msg);
     } finally {
       setCancelling(false);
+    }
+  }
+
+  async function removeIva() {
+    if (!order) return;
+    const ok = await confirm({
+      title: "Quitar IVA",
+      description:
+        "El total queda en el valor de los productos y el envío. El efectivo de esta venta se ajusta al mismo monto.",
+      confirmLabel: "Quitar IVA",
+    });
+    if (!ok) return;
+    setRemovingTax(true);
+    setError(null);
+    try {
+      setOrder(await ordersApi.adminRemoveIva(order.id));
+      toast.success("IVA quitado del pedido.");
+    } catch (err) {
+      const msg = err instanceof ApiError ? err.message : "No se pudo quitar el IVA";
+      setError(msg);
+      toast.error(msg);
+    } finally {
+      setRemovingTax(false);
     }
   }
 
@@ -547,6 +571,16 @@ export default function AdminOrderDetailPage() {
                   <span>Total</span>
                   <span>{money(order.total, order.currency)}</span>
                 </div>
+                {showTax ? (
+                  <button
+                    type="button"
+                    className="btn-secondary btn-sm"
+                    disabled={removingTax}
+                    onClick={() => void removeIva()}
+                  >
+                    {removingTax ? "Quitando IVA…" : "Quitar IVA"}
+                  </button>
+                ) : null}
               </div>
             </section>
 
