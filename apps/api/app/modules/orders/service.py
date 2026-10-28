@@ -8,7 +8,12 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, joinedload
 
 from app.modules.catalog.models import Product
-from app.modules.commerce.tax import RIMPE_NEGOCIO_POPULAR, calculate_tax, store_tax_regime
+from app.modules.commerce.tax import (
+    RIMPE_NEGOCIO_POPULAR,
+    calculate_tax,
+    charges_iva,
+    store_tax_regime,
+)
 from app.modules.inventory.models import InventoryReservation, ReservationStatus
 from app.modules.inventory.schemas import MovementRequest
 from app.modules.inventory.service import InventoryService
@@ -20,6 +25,10 @@ from app.modules.notifications.service import (
 from app.modules.orders.models import Order, OrderItem, OrderStatus, OrderStatusEvent
 from app.modules.orders.repository import OrderRepository
 from app.modules.orders.schemas import (
+    CounterSaleItem,
+    CounterSalePreviewItemRead,
+    CounterSalePreviewRequest,
+    CounterSalePreviewResponse,
     CounterSaleRequest,
     OrderItemRead,
     OrderListResponse,
@@ -436,22 +445,50 @@ class OrderService:
             include_history=True,
         )
 
-    def _create_counter_sale(self, admin: User, payload: CounterSaleRequest) -> Order:
-        product_ids = [item.product_id for item in payload.items]
+    def preview_counter_sale(
+        self, payload: CounterSalePreviewRequest
+    ) -> CounterSalePreviewResponse:
+        lines, subtotal, discount_total, tax_total, total, tax_enabled = (
+            self._quote_counter_items(payload.items, lock=False)
+        )
+        return CounterSalePreviewResponse(
+            currency=PriceCurrency.USD.value,
+            subtotal=subtotal,
+            tax_total=tax_total,
+            shipping_total=Decimal("0.0000"),
+            discount_total=discount_total,
+            total=total,
+            tax_enabled=tax_enabled,
+            items=[
+                CounterSalePreviewItemRead(
+                    product_id=product.id,
+                    product_name=product.name,
+                    sku=product.sku,
+                    quantity=quantity,
+                    unit_price=unit,
+                    line_discount=line_discount,
+                    line_total=Decimal(unit * quantity).quantize(Decimal("0.0001")),
+                )
+                for product, quantity, unit, line_discount in lines
+            ],
+        )
+
+    def _quote_counter_items(
+        self, items: list[CounterSaleItem], *, lock: bool
+    ) -> tuple[
+        list[tuple[Product, int, Decimal, Decimal]],
+        Decimal,
+        Decimal,
+        Decimal,
+        Decimal,
+        bool,
+    ]:
+        product_ids = [item.product_id for item in items]
         if len(product_ids) != len(set(product_ids)):
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail="Cada producto solo puede aparecer una vez",
             )
-
-        customer: User | None = None
-        if payload.customer_id is not None:
-            customer = UserService(self.db)._require_customer(payload.customer_id)
-            if not customer.is_active:
-                raise HTTPException(
-                    status_code=status.HTTP_409_CONFLICT,
-                    detail="El cliente está inactivo",
-                )
 
         pricing = PricingService(self.db)
         price_map = pricing.map_effective_prices(product_ids)
@@ -459,10 +496,11 @@ class OrderService:
         subtotal = Decimal("0")
         discount_total = Decimal("0")
 
-        for item in payload.items:
-            product = self.db.scalar(
-                select(Product).where(Product.id == item.product_id).with_for_update()
-            )
+        for item in items:
+            query = select(Product).where(Product.id == item.product_id)
+            if lock:
+                query = query.with_for_update()
+            product = self.db.scalar(query)
             if product is None or not product.is_active:
                 raise HTTPException(
                     status_code=status.HTTP_409_CONFLICT,
@@ -488,11 +526,34 @@ class OrderService:
         merchandise = (subtotal - discount_total).quantize(Decimal("0.0001"))
         if merchandise < 0:
             merchandise = Decimal("0.0000")
+        tax_regime = store_tax_regime(self.db)
         tax_total = calculate_tax(
             taxable_subtotal=merchandise,
-            tax_regime=store_tax_regime(self.db),
+            tax_regime=tax_regime,
         )
         total = (merchandise + tax_total).quantize(Decimal("0.0001"))
+        return (
+            lines,
+            subtotal,
+            discount_total,
+            tax_total,
+            total,
+            charges_iva(tax_regime=tax_regime),
+        )
+
+    def _create_counter_sale(self, admin: User, payload: CounterSaleRequest) -> Order:
+        lines, subtotal, discount_total, tax_total, total, _tax_enabled = (
+            self._quote_counter_items(payload.items, lock=True)
+        )
+
+        customer: User | None = None
+        if payload.customer_id is not None:
+            customer = UserService(self.db)._require_customer(payload.customer_id)
+            if not customer.is_active:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="El cliente está inactivo",
+                )
 
         if customer is not None:
             buyer_name = f"{customer.first_name} {customer.last_name}".strip()
@@ -521,7 +582,6 @@ class OrderService:
         reference = payload.address_reference or (
             customer.address_reference if customer else None
         )
-        postal_code = payload.postal_code or (customer.postal_code if customer else None)
         if id_type and not (address_line and city and province and buyer_phone):
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -537,7 +597,6 @@ class OrderService:
                 "city": city,
                 "province": province,
                 "country": country,
-                "postal_code": postal_code,
             }
             if customer is not None:
                 customer.address_line = address_line
@@ -545,7 +604,6 @@ class OrderService:
                 customer.city = city
                 customer.province = province
                 customer.country = country
-                customer.postal_code = postal_code
 
         order = Order(
             user_id=buyer_id,

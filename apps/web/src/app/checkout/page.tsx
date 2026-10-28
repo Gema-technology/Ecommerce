@@ -55,7 +55,6 @@ const emptyAddress: ShippingAddress = {
   city: "",
   province: "",
   country: "Ecuador",
-  postal_code: "",
 };
 
 function fieldError(message: string) {
@@ -232,7 +231,6 @@ export default function CheckoutPage() {
         shipping_address: {
           ...address,
           reference: address.reference || null,
-          postal_code: address.postal_code || null,
         },
         customer_notes: notes.trim() || null,
         buyer_id_type: buyerIdType,
@@ -604,16 +602,6 @@ export default function CheckoutPage() {
                           value={address.reference ?? ""}
                           onChange={(e) =>
                             updateAddress("reference", e.target.value)
-                          }
-                        />
-                      </label>
-                      <label className="label-field">
-                        Código postal
-                        <input
-                          className="input-field mt-1.5"
-                          value={address.postal_code ?? ""}
-                          onChange={(e) =>
-                            updateAddress("postal_code", e.target.value)
                           }
                         />
                       </label>

@@ -15,6 +15,7 @@ from app.core.brand_assets import (
 from app.core.config import settings
 from app.core.pdf_client_card import build_client_card
 from app.modules.sri.models import FiscalDocument
+from app.modules.sri.timeutil import format_ecuador_datetime
 from app.modules.store_config.schemas import StoreConfigRead
 
 _TEMPLATES_DIR = Path(__file__).resolve().parent / "templates"
@@ -33,6 +34,7 @@ def _format_money(value: Any) -> str:
 
 
 _env.filters["money"] = _format_money
+_env.filters["ecuador_dt"] = format_ecuador_datetime
 
 
 REGIME_LABELS = {
@@ -201,7 +203,7 @@ def _generate_pdf_reportlab_nota(
     if doc.created_at:
         right_lines.append(
             Paragraph(
-                f"Fecha: {doc.created_at.strftime('%d/%m/%Y %H:%M')}",
+                f"Fecha: {format_ecuador_datetime(doc.created_at)}",
                 right_meta,
             )
         )

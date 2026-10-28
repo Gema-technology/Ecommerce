@@ -168,9 +168,6 @@ export default function OrderDetailPage() {
                   {order.shipping_address.city},{" "}
                   {order.shipping_address.province},{" "}
                   {order.shipping_address.country}
-                  {order.shipping_address.postal_code
-                    ? ` · ${order.shipping_address.postal_code}`
-                    : ""}
                 </p>
                 {order.customer_notes ? (
                   <p className="mt-3 text-secondary">

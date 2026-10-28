@@ -179,6 +179,33 @@ class CounterSaleRequest(BaseModel):
         return self
 
 
+class CounterSalePreviewRequest(BaseModel):
+    """Price a counter sale without creating the order or moving stock."""
+
+    items: list[CounterSaleItem] = Field(min_length=1, max_length=50)
+
+
+class CounterSalePreviewItemRead(BaseModel):
+    product_id: UUID
+    product_name: str
+    sku: str
+    quantity: int
+    unit_price: Decimal
+    line_discount: Decimal = Decimal("0")
+    line_total: Decimal
+
+
+class CounterSalePreviewResponse(BaseModel):
+    currency: str
+    subtotal: Decimal
+    tax_total: Decimal
+    shipping_total: Decimal
+    discount_total: Decimal
+    total: Decimal
+    tax_enabled: bool
+    items: list[CounterSalePreviewItemRead]
+
+
 class OrderRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

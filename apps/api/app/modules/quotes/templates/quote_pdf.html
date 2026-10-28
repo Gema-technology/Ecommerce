@@ -167,7 +167,7 @@
     <div class="doc-meta">
       <div class="number">{{ quote.number }}</div>
       <p>Proforma / Cotización</p>
-      <p>Fecha: {{ quote.created_at.strftime("%d/%m/%Y") }}</p>
+      <p>Fecha: {{ quote.created_at | ecuador_dt(false) }}</p>
       {% if quote.valid_until %}
       <p>Válida hasta: {{ quote.valid_until.strftime("%d/%m/%Y") }}</p>
       {% endif %}

@@ -182,6 +182,41 @@ def test_counter_sale_rejects_insufficient_stock(
     assert inventory.quantity == 1
 
 
+def test_counter_sale_preview_shows_totals_without_saving(
+    client: TestClient,
+    admin_user: User,
+    db_session: Session,
+) -> None:
+    product = _seed_sellable(client, admin_user, sku="CTR-PREV", price="25.00", stock=5)
+    _login(client, admin_user)
+    before = db_session.scalar(select(func.count()).select_from(Order))
+
+    response = client.post(
+        "/api/v1/admin/orders/counter-sale/preview",
+        json={"items": [{"product_id": product["id"], "quantity": 2}]},
+    )
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert Decimal(body["subtotal"]) == Decimal("50.0000")
+    assert Decimal(body["shipping_total"]) == Decimal("0")
+    assert Decimal(body["total"]) == (
+        Decimal(body["subtotal"])
+        - Decimal(body["discount_total"])
+        + Decimal(body["tax_total"])
+    )
+    assert body["items"][0]["quantity"] == 2
+    assert Decimal(body["items"][0]["line_total"]) == Decimal("50.0000")
+
+    db_session.expire_all()
+    after = db_session.scalar(select(func.count()).select_from(Order))
+    assert after == before
+    inventory = db_session.scalar(
+        select(Inventory).where(Inventory.product_id == UUID(product["id"]))
+    )
+    assert inventory is not None
+    assert inventory.quantity == 5
+
+
 def test_admin_removes_iva_saved_on_a_negocio_popular_order(
     client: TestClient,
     admin_user: User,

@@ -23,3 +23,12 @@ def ecuador_now(*, reference: datetime | None = None) -> datetime:
 def ecuador_emission_date(*, reference: datetime | None = None) -> date:
     """Calendar date for clave de acceso / fechaEmision (dd/mm/yyyy)."""
     return ecuador_now(reference=reference).date()
+
+
+def format_ecuador_datetime(value: datetime | None, with_time: bool = True) -> str:
+    """Stamp a stored instant on a document in mainland Ecuador time."""
+    if value is None:
+        return ""
+    local = ecuador_now(reference=value)
+    pattern = "%d/%m/%Y %H:%M" if with_time else "%d/%m/%Y"
+    return local.strftime(pattern)

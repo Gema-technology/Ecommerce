@@ -36,6 +36,36 @@ from app.modules.sri.timeutil import ecuador_emission_date
 from app.modules.sri.xml_factura import FacturaLine, FacturaPayload, build_factura_xml
 from app.modules.store_config.service import StoreConfigService
 
+def _postal_code(address: dict | None) -> str | None:
+    if not isinstance(address, dict):
+        return None
+    code = address.get("postal_code")
+    if code is None:
+        return None
+    cleaned = str(code).strip()
+    return cleaned or None
+
+
+def _address_without_postal(address: dict) -> str | None:
+    parts = [
+        address.get("address_line"),
+        address.get("city"),
+        address.get("province"),
+    ]
+    text = ", ".join(str(part).strip() for part in parts if part and str(part).strip())
+    return text or None
+
+
+def _drop_postal_code(address: str | None, postal_code: str | None) -> str | None:
+    if not address:
+        return address
+    code = (postal_code or "").strip()
+    if not code:
+        return address
+    parts = [part.strip() for part in address.split(",") if part.strip() and part.strip() != code]
+    return ", ".join(parts) or None
+
+
 EMITTABLE_STATUSES = {
     OrderStatus.PAID.value,
     OrderStatus.PROCESSING.value,
@@ -237,16 +267,8 @@ class SriService:
         email = payload.buyer_email or order.customer_email
         address = payload.buyer_address
         if not address and order.shipping_address:
-            addr = order.shipping_address
-            address = ", ".join(
-                p
-                for p in [
-                    addr.get("address_line"),
-                    addr.get("city"),
-                    addr.get("province"),
-                ]
-                if p
-            )
+            address = _address_without_postal(order.shipping_address)
+        address = _drop_postal_code(address, _postal_code(order.shipping_address))
 
         if id_type == BuyerIdType.CONSUMIDOR_FINAL.value:
             id_number = CONSUMIDOR_FINAL_ID
@@ -274,6 +296,11 @@ class SriService:
         ]
 
     def _persist_pdf(self, doc: FiscalDocument, cfg: SriConfig) -> None:
+        order = self.db.get(Order, doc.order_id)
+        if order is not None:
+            doc.buyer_address = _drop_postal_code(
+                doc.buyer_address, _postal_code(order.shipping_address)
+            )
         store = StoreConfigService(self.db).get_read()
         pdf_bytes = generate_fiscal_pdf(doc, store_config=store, regime=cfg.tax_regime)
         filename = f"{doc.doc_type.lower()}_{doc.document_number.replace('-', '_')}.pdf"

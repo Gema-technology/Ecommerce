@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 from cryptography import x509
@@ -54,6 +54,15 @@ def test_modulo11_and_access_key_length():
     assert key.isdigit()
     assert key.endswith(digit)
     assert format_document_number("1", "2", 3) == "001-002-000000003"
+
+
+def test_format_ecuador_datetime_prints_guayaquil_not_utc():
+    from app.modules.sri.timeutil import format_ecuador_datetime
+
+    # 2026-10-28 02:25 UTC == 2026-10-27 21:25 America/Guayaquil
+    instant = datetime(2026, 10, 28, 2, 25, tzinfo=UTC)
+    assert format_ecuador_datetime(instant) == "27/10/2026 21:25"
+    assert format_ecuador_datetime(instant, False) == "27/10/2026"
 
 
 def test_ecuador_emission_date_uses_guayaquil_not_utc_date():
@@ -247,6 +256,7 @@ def _seed_paid_order(db: Session) -> Order:
             "city": "Ibarra",
             "province": "Imbabura",
             "country": "Ecuador",
+            "postal_code": "100113",
         },
     )
     db.add(order)
@@ -346,11 +356,24 @@ def test_emit_nota_venta(
     assert data["document_number"] == "001-001-000000001"
     assert data["has_pdf"] is True
     assert Decimal(data["tax_total"]) == Decimal("0")
+    assert data["buyer_address"] == "Calle 1, Ibarra, Imbabura"
+    assert "100113" not in data["buyer_address"]
+
+    from app.modules.sri.models import FiscalDocument
+
+    stored = db_session.get(FiscalDocument, UUID(data["id"]))
+    assert stored is not None
+    stored.buyer_address = "Calle 1, Ibarra, Imbabura, 100113"
+    db_session.commit()
 
     pdf = client.get(f"/api/v1/admin/fiscal-documents/{data['id']}/pdf")
     assert pdf.status_code == 200
     assert pdf.headers["content-type"].startswith("application/pdf")
     assert pdf.content[:4] == b"%PDF"
+    db_session.expire_all()
+    stored = db_session.get(FiscalDocument, UUID(data["id"]))
+    assert stored is not None
+    assert stored.buyer_address == "Calle 1, Ibarra, Imbabura"
 
     # Second download regenerates from the current template (still valid PDF).
     pdf2 = client.get(f"/api/v1/admin/fiscal-documents/{data['id']}/pdf")
@@ -424,6 +447,7 @@ def test_fiscal_pdf_html_has_header_and_footer_structure():
     assert 'class="client-grid"' in html
     assert "data:image/" in html
     assert "NOTA DE VENTA" in html
+    assert "Fecha: 12/10/2026 13:34" in html
     assert "001-001-000000002" in html
     assert "Consumidor final" in html
     assert "GEMA Technology" in html

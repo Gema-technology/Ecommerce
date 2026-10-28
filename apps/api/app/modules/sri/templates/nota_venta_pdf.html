@@ -215,7 +215,7 @@
     <div class="doc-meta">
       <div class="doc-type">{{ title }}</div>
       <div class="number">{{ doc.document_number }}</div>
-      <p>Fecha: {{ doc.created_at.strftime('%d/%m/%Y %H:%M') if doc.created_at else '' }}</p>
+      <p>Fecha: {{ doc.created_at | ecuador_dt }}</p>
       {% if doc.access_key %}
       <p class="key">Clave de acceso: {{ doc.access_key }}</p>
       {% endif %}

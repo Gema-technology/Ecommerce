@@ -54,7 +54,6 @@ function buyerAddressFromOrder(order: Order): string {
     address.reference,
     address.city,
     address.province,
-    address.postal_code,
   ]
     .filter(Boolean)
     .join(", ");
@@ -412,9 +411,6 @@ export default function AdminOrderDetailPage() {
                   </MetaRow>
                   <MetaRow label="País">
                     {order.shipping_address.country}
-                    {order.shipping_address.postal_code
-                      ? ` · ${order.shipping_address.postal_code}`
-                      : ""}
                   </MetaRow>
                 </dl>
                 {order.customer_notes ? (

@@ -72,6 +72,27 @@ export type CounterSaleRequest = {
   items: CounterSaleItem[];
 };
 
+export type CounterSalePreviewItem = {
+  product_id: string;
+  product_name: string;
+  sku: string;
+  quantity: number;
+  unit_price: string;
+  line_discount: string;
+  line_total: string;
+};
+
+export type CounterSalePreview = {
+  currency: string;
+  subtotal: string;
+  tax_total: string;
+  shipping_total: string;
+  discount_total: string;
+  total: string;
+  tax_enabled: boolean;
+  items: CounterSalePreviewItem[];
+};
+
 export type Order = {
   id: string;
   order_number: string;
@@ -311,6 +332,15 @@ export const ordersApi = {
     return request<Order>(`/api/v1/admin/orders/${orderId}/remove-iva`, {
       method: "POST",
     });
+  },
+  previewCounterSale(items: CounterSaleItem[]) {
+    return request<CounterSalePreview>(
+      "/api/v1/admin/orders/counter-sale/preview",
+      {
+        method: "POST",
+        body: JSON.stringify({ items }),
+      },
+    );
   },
   createCounterSale(payload: CounterSaleRequest) {
     return request<Order>("/api/v1/admin/orders/counter-sale", {

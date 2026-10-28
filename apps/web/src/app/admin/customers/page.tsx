@@ -45,7 +45,6 @@ export default function AdminCustomersPage() {
   const [addressReference, setAddressReference] = useState("");
   const [province, setProvince] = useState("");
   const [city, setCity] = useState("");
-  const [postalCode, setPostalCode] = useState("");
   const [password, setPassword] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -107,7 +106,6 @@ export default function AdminCustomersPage() {
     setAddressReference("");
     setProvince("");
     setCity("");
-    setPostalCode("");
     setPassword("");
     setFormOpen(true);
   }
@@ -124,7 +122,6 @@ export default function AdminCustomersPage() {
     setAddressReference(customer.address_reference ?? "");
     setProvince(customer.province ?? "");
     setCity(customer.city ?? "");
-    setPostalCode(customer.postal_code ?? "");
     setPassword("");
     setFormOpen(true);
   }
@@ -147,7 +144,6 @@ export default function AdminCustomersPage() {
           city,
           province,
           country: "Ecuador",
-          postal_code: postalCode.trim() || null,
           ...(password ? { password } : {}),
         });
         setItems((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
@@ -165,7 +161,6 @@ export default function AdminCustomersPage() {
           city,
           province,
           country: "Ecuador",
-          postal_code: postalCode.trim() || null,
         });
         toast.success("Cliente registrado.");
         await load();
@@ -506,17 +501,10 @@ export default function AdminCustomersPage() {
                 required
               />
             </FormField>
-            <FormField label="Referencia">
+            <FormField label="Referencia" className="sm:col-span-2">
               <Input
                 value={addressReference}
                 onChange={(event) => setAddressReference(event.target.value)}
-                placeholder="Opcional"
-              />
-            </FormField>
-            <FormField label="Código postal">
-              <Input
-                value={postalCode}
-                onChange={(event) => setPostalCode(event.target.value)}
                 placeholder="Opcional"
               />
             </FormField>

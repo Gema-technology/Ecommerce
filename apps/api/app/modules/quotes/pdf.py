@@ -11,6 +11,7 @@ from app.core.brand_assets import (
 from app.core.config import settings
 from app.core.pdf_client_card import build_client_card
 from app.modules.quotes.models import Quote
+from app.modules.sri.timeutil import format_ecuador_datetime
 from app.modules.store_config.schemas import StoreConfigRead
 
 _TEMPLATES_DIR = Path(__file__).resolve().parent / "templates"
@@ -38,6 +39,7 @@ def _format_pct(value: Any) -> str:
 
 _env.filters["money"] = _format_money
 _env.filters["pct"] = _format_pct
+_env.filters["ecuador_dt"] = format_ecuador_datetime
 
 
 def business_info(store_config: StoreConfigRead | None = None) -> dict[str, str]:
@@ -181,7 +183,7 @@ def _generate_pdf_reportlab(
         Paragraph("PROFORMA / COTIZACIÓN", doc_type_style),
         Paragraph(quote.number, number_style),
         Paragraph(
-            f"Fecha: {quote.created_at.strftime('%d/%m/%Y')}",
+            f"Fecha: {format_ecuador_datetime(quote.created_at, False)}",
             right_meta,
         ),
     ]
