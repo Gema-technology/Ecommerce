@@ -14,6 +14,7 @@ import { Pagination } from "@/components/shared/Pagination";
 import { ApiError } from "@/lib/auth-api";
 import {
   adminEmployeesApi,
+  inviteUrlOnCurrentSite,
   type Employee,
   type StaffRole,
 } from "@/lib/admin-employees-api";
@@ -127,7 +128,7 @@ export default function AdminEmployeesPage() {
         role,
         job_title: jobTitle || null,
       });
-      setInviteUrl(created.invite_url ?? null);
+      setInviteUrl(inviteUrlOnCurrentSite(created.invite_url));
       setEmail("");
       setFirstName("");
       setLastName("");
@@ -204,7 +205,7 @@ export default function AdminEmployeesPage() {
     setInviteUrl(null);
     try {
       const result = await adminEmployeesApi.resendInvite(employee.id);
-      setInviteUrl(result.invite_url ?? null);
+      setInviteUrl(inviteUrlOnCurrentSite(result.invite_url));
       await load();
       toast.success(
         result.email_sent
@@ -237,7 +238,7 @@ export default function AdminEmployeesPage() {
     setInviteUrl(null);
     try {
       const result = await adminEmployeesApi.resetPassword(employee.id);
-      setInviteUrl(result.invite_url ?? null);
+      setInviteUrl(inviteUrlOnCurrentSite(result.invite_url));
       await load();
       toast.success("Contraseña reseteada. Comparte el nuevo enlace.");
     } catch (err) {

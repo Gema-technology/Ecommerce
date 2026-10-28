@@ -1,7 +1,7 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -40,9 +40,10 @@ def list_employees(
 def invite_employee(
     payload: EmployeeInviteRequest,
     admin: RequireSuperAdmin,
+    request: Request,
     db: Annotated[Session, Depends(get_db)],
 ) -> EmployeeInviteResponse:
-    return EmployeeService(db).invite(payload, admin)
+    return EmployeeService(db).invite(payload, admin, request)
 
 
 @router.patch("/admin/employees/{employee_id}/role", response_model=EmployeeListItem)
@@ -62,10 +63,11 @@ def set_employee_role(
 def resend_employee_invite(
     employee_id: UUID,
     admin: RequireSuperAdmin,
+    request: Request,
     db: Annotated[Session, Depends(get_db)],
 ) -> EmployeeInviteResponse:
     """Regenerate invite link for a pending (invited) employee."""
-    return EmployeeService(db).resend_invite(employee_id, admin)
+    return EmployeeService(db).resend_invite(employee_id, admin, request)
 
 
 @router.post(
@@ -75,10 +77,11 @@ def resend_employee_invite(
 def reset_employee_password(
     employee_id: UUID,
     admin: RequireSuperAdmin,
+    request: Request,
     db: Annotated[Session, Depends(get_db)],
 ) -> EmployeeInviteResponse:
     """Invalidate password and issue a new set-password link (48h)."""
-    return EmployeeService(db).reset_password(employee_id, admin)
+    return EmployeeService(db).reset_password(employee_id, admin, request)
 
 
 @router.patch("/admin/employees/{employee_id}/active", response_model=EmployeeListItem)

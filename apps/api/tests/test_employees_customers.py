@@ -254,6 +254,34 @@ def test_admin_cannot_reset_password(client: TestClient, admin_user: User) -> No
     assert client.post(f"/api/v1/admin/employees/{emp_id}/resend-invite").status_code == 403
 
 
+def test_invite_base_url_skips_paused_placeholder_host() -> None:
+    from starlette.requests import Request
+
+    from app.core.config import settings
+    from app.modules.employees.service import _invite_base_url
+
+    previous = settings.public_app_url
+    settings.public_app_url = "https://placeholder.vercel.app"
+    try:
+        request = Request(
+            {
+                "type": "http",
+                "http_version": "1.1",
+                "method": "POST",
+                "scheme": "https",
+                "path": "/api/v1/admin/employees/invite",
+                "raw_path": b"/api/v1/admin/employees/invite",
+                "query_string": b"",
+                "headers": [(b"origin", b"https://ecommerce-nu-flax-51.vercel.app")],
+                "client": ("127.0.0.1", 123),
+                "server": ("test", 443),
+            }
+        )
+        assert _invite_base_url(request) == "https://ecommerce-nu-flax-51.vercel.app"
+    finally:
+        settings.public_app_url = previous
+
+
 def test_invite_returns_link_and_sends_email_when_enabled(
     client: TestClient,
     super_admin_user: User,

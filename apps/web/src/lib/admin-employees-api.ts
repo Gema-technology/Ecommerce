@@ -16,6 +16,19 @@ export type Employee = {
   email_sent?: boolean;
 };
 
+export function inviteUrlOnCurrentSite(inviteUrl: string | null | undefined): string | null {
+  if (!inviteUrl) return null;
+  if (typeof window === "undefined") return inviteUrl;
+  try {
+    const url = new URL(inviteUrl);
+    url.protocol = window.location.protocol;
+    url.host = window.location.host;
+    return url.toString();
+  } catch {
+    return inviteUrl;
+  }
+}
+
 export type StaffRole = "ADMIN" | "SUPER_ADMIN";
 
 export type InviteEmployeePayload = {

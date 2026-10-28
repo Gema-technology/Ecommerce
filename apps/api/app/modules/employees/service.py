@@ -3,9 +3,10 @@ import logging
 import secrets
 from datetime import UTC, datetime, timedelta
 from html import escape
+from urllib.parse import urlparse
 from uuid import UUID
 
-from fastapi import HTTPException, status
+from fastapi import HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -74,18 +75,47 @@ def _send_invite_email(*, to_address: str, name: str, invite_url: str) -> bool:
     return True
 
 
-def _invite_base_url() -> str:
-    """Storefront origin for invite/reset links (PUBLIC_APP_URL preferred)."""
+def _usable_storefront_origin(value: str | None) -> str | None:
+    """Return a public origin, skipping localhost and unset template hosts."""
+    raw = (value or "").strip()
+    if not raw:
+        return None
+    if "://" not in raw:
+        raw = f"https://{raw}"
+    parsed = urlparse(raw)
+    host = (parsed.hostname or "").lower()
+    if not host or parsed.scheme not in {"http", "https"}:
+        return None
+    if host in {"localhost", "127.0.0.1", "placeholder.vercel.app"}:
+        return None
+    if "replace_" in host or host.endswith(".example") or host.endswith(".example.com"):
+        return None
+    return f"{parsed.scheme}://{parsed.netloc}".rstrip("/")
+
+
+def _invite_base_url(request: Request | None = None) -> str:
+    """Storefront origin for invite links.
+
+    A real browser origin wins over PUBLIC_APP_URL when that setting still
+    points at a template host such as placeholder.vercel.app.
+    """
+    candidates: list[str | None] = []
+    if request is not None:
+        candidates.append(request.headers.get("origin"))
+        forwarded = request.headers.get("x-forwarded-host")
+        if forwarded:
+            proto = request.headers.get("x-forwarded-proto") or "https"
+            candidates.append(f"{proto}://{forwarded.split(',')[0].strip()}")
+        candidates.append(request.headers.get("referer"))
+    candidates.append(settings.public_app_url)
+    candidates.extend(settings.cors_origin_list)
+    for candidate in candidates:
+        origin = _usable_storefront_origin(candidate)
+        if origin:
+            return origin
     public = (settings.public_app_url or "").strip().rstrip("/")
     if public:
         return public
-    origins = settings.cors_origin_list
-    if origins:
-        return origins[0].rstrip("/")
-    if settings.is_production or settings.is_staging:
-        raise RuntimeError(
-            "PUBLIC_APP_URL is required for invite links in staging/production"
-        )
     return "http://localhost:3000"
 
 
@@ -139,9 +169,11 @@ class EmployeeService:
             total_pages=total_pages(total, page_size),
         )
 
-    def _build_invite_response(self, employee: Employee, token: str) -> EmployeeInviteResponse:
+    def _build_invite_response(
+        self, employee: Employee, token: str, request: Request | None = None
+    ) -> EmployeeInviteResponse:
         item = self._to_list_item(employee)
-        invite_url = f"{_invite_base_url()}/accept-invite?token={token}"
+        invite_url = f"{_invite_base_url(request)}/accept-invite?token={token}"
         email_sent = _send_invite_email(
             to_address=item.email,
             name=f"{item.first_name} {item.last_name}".strip(),
@@ -171,7 +203,9 @@ class EmployeeService:
         self.employees.save(employee)
         return token
 
-    def invite(self, data: EmployeeInviteRequest, invited_by: User) -> EmployeeInviteResponse:
+    def invite(
+        self, data: EmployeeInviteRequest, invited_by: User, request: Request | None = None
+    ) -> EmployeeInviteResponse:
         self.roles.ensure_default_roles()
         staff_role = self.roles.get_by_name(data.role)
         if staff_role is None:
@@ -227,10 +261,10 @@ class EmployeeService:
         self.db.commit()
         employee = self.employees.get_by_id(employee.id)
         assert employee is not None
-        return self._build_invite_response(employee, token)
+        return self._build_invite_response(employee, token, request)
 
     def resend_invite(
-        self, employee_id: UUID, invited_by: User
+        self, employee_id: UUID, invited_by: User, request: Request | None = None
     ) -> EmployeeInviteResponse:
         employee = self.employees.get_by_id(employee_id)
         if employee is None:
@@ -248,10 +282,10 @@ class EmployeeService:
         self.db.commit()
         employee = self.employees.get_by_id(employee_id)
         assert employee is not None
-        return self._build_invite_response(employee, token)
+        return self._build_invite_response(employee, token, request)
 
     def reset_password(
-        self, employee_id: UUID, invited_by: User
+        self, employee_id: UUID, invited_by: User, request: Request | None = None
     ) -> EmployeeInviteResponse:
         """Force password change via a new accept-invite link (invalidates old password)."""
         employee = self.employees.get_by_id(employee_id)
@@ -270,7 +304,7 @@ class EmployeeService:
         self.db.commit()
         employee = self.employees.get_by_id(employee_id)
         assert employee is not None
-        return self._build_invite_response(employee, token)
+        return self._build_invite_response(employee, token, request)
 
     def set_role(self, employee_id: UUID, data: EmployeeRoleUpdate) -> EmployeeListItem:
         employee = self.employees.get_by_id(employee_id)
